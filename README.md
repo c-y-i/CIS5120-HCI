@@ -7,8 +7,15 @@ PC View of the page as shown below:
 ![PC View of the Course Planning System](assignment_1/assets/pc_view.png)
 
 ## How to Run
+Open [`assignment_1/index.html`](assignment_1/index.html) in your web browser. No server setup is required because there is no backend.
 
-Simply open `index.html` in your web browser. No server setup required because there is no backend.
+## How to Use
+
+1. Select a semester from the dropdown menu.
+2. Type a keyword (e.g., "CIS" or "1") into the search bar.
+3. Click the "Search" button to find courses matching your criteria.
+4. Add desired courses to your plan or cart by clicking the respective buttons.
+5. Generate your course plan to finalize your selections.
 
 ## File Structure
 
