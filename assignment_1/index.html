@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIS 512 Path@Penn - Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo-section">
+                <img src="assets/penn_logo.png" alt="Penn Logo" class="penn-logo-img">
+            </div>
+            <div class="search-section">
+                <h3>Search Classes</h3>
+                <div class="search-form">
+                    <select class="search-input" id="semester-select">
+                        <option value="">Select Semester...</option>
+                        <option value="2025 Spring">2025 Spring</option>
+                        <option value="2025 Summer">2025 Summer</option>
+                        <option value="2025 Fall">2025 Fall</option>
+                        <option value="2026 Spring">2026 Spring</option>
+                        <option value="2026 Summer">2026 Summer</option>
+                        <option value="2026 Fall">2026 Fall</option>
+                    </select>
+                    <input type="text" placeholder="Key words..." class="search-input" id="keywords-input">
+                    <select class="search-input" id="type-select">
+                        <option value="all">All Types</option>
+                        <option value="in-person">In-Person</option>
+                        <option value="online">Online</option>
+                        <option value="hybrid">Hybrid</option>
+                        <option value="undergrad">Undergraduate (4xxx and under)</option>
+                        <option value="grad">Graduate (5xxx and higher)</option>
+                        <option value="seminar">Seminars</option>
+                        <option value="lab">Laboratory</option>
+                        <option value="lecture">Lecture</option>
+                    </select>
+                    <button class="btn btn-secondary" id="advanced-search-toggle">Toggle for Advanced Search</button>
+                    <div class="advanced-search hidden" id="advanced-search">
+                        <select class="search-input" id="program-select">
+                            <option value="all">All Programs</option>
+                            <option value="CIS">Computer and Information Science</option>
+                            <option value="MEAM">Mechanical Engineering and Applied Mechanics</option>
+                            <option value="ESE">Electrical and Systems Engineering</option>
+                            <option value="BE">Bioengineering</option>
+                            <option value="CBE">Chemical and Biomolecular Engineering</option>
+                            <option value="MSE">Materials Science and Engineering</option>
+                            <option value="ENM">Engineering Mathematics</option>
+                            <option value="NETS">Networked and Social Systems Engineering</option>
+                            <option value="ROBO">Robotics</option>
+                            <option value="DATS">Data Science</option>
+                        </select>
+                        <input type="text" placeholder="Search programs..." class="search-input" id="program-search">
+                    </div>
+                    <button class="btn btn-primary search-btn">Search</button>
+                </div>
+            </div>
+            <div class="suggestions-section">
+                <h3>Suggestions</h3>
+                <button class="btn btn-suggestion">Degree Auditing</button>
+            </div>
+            <div class="navigation-section">
+                <button class="nav-btn active" data-section="course-planner">Course Planner</button>
+                <button class="nav-btn" data-section="primary-cart">Primary Cart</button>
+                <button class="nav-btn" data-section="primary-plan">Primary Plan</button>
+                <button class="nav-btn" data-section="contact-help">Contact & Help</button>
+            </div>
+        </div>
+        <div class="results-section hidden" id="results-section">
+            <div class="results-header">
+                <div class="results-title">
+                    <span class="sort-icon">⏷</span>
+                    <span class="search-icon">🔍</span>
+                    <h2>Results</h2>
+                </div>
+                <div class="results-controls">
+                    <button class="btn btn-secondary" id="sort-btn">Sort</button>
+                    <button class="btn btn-secondary" id="reset-results-btn">Reset</button>
+                </div>
+            </div>
+            <div class="results-count" id="results-count">— courses found.</div>
+            <div class="course-list" id="course-list">
+            </div>
+        </div>
+        <div class="right-column" id="right-column">
+            <div class="course-planner" id="course-planner">
+                <div class="planner-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <h3>Course Planner</h3>
+                        <button class="collapse-toggle" id="planner-collapse-toggle" title="Collapse/Expand">▼</button>
+                    </div>
+                    <div class="planner-controls">
+                        <button class="btn btn-secondary" id="pick-cart-btn">Pick Cart</button>
+                        <button class="btn btn-secondary" id="pick-plan-btn">Pick Plan...</button>
+                        <button class="btn btn-warning" id="clear-cart-btn">Clear Cart</button>
+                        <button class="btn btn-warning" id="clear-plan-btn">Clear Plan</button>
+                    </div>
+                </div>
+                <div class="planner-content">
+                <div class="time-selection-info">
+                    <p>Select time periods when you don't want classes:</p>
+                    <div class="selection-mode">
+                        <button class="btn btn-toggle" id="selection-toggle">Selection Mode: OFF</button>
+                    </div>
+                </div>
+                <div class="weekly-calendar">
+                    <div class="calendar-header">
+                        <div class="time-label">Time</div>
+                        <div class="day">Mon</div>
+                        <div class="day">Tue</div>
+                        <div class="day">Wed</div>
+                        <div class="day">Thu</div>
+                        <div class="day">Fri</div>
+                    </div>
+                    <div class="calendar-grid" id="planner-calendar">
+                    </div>
+                </div>
+
+                <div class="planner-options">
+                    <div class="credit-selector">
+                        <label for="credit-limit">Max Credits: <span id="credit-value">15</span></label>
+                        <input type="range" id="credit-limit" min="2" max="30" value="15" class="credit-slider">
+                    </div>
+                    <button class="btn btn-primary" id="generate-plans-btn">Generate Plans</button>
+                    <button class="btn btn-secondary" id="reset-planner-btn">Reset</button>
+                </div>
+                </div>
+            </div>
+            <div class="recommended-plans" id="recommended-plans">
+                <div class="plans-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <h3>Recommended Plans</h3>
+                        <button class="collapse-toggle" id="plans-collapse-toggle" title="Collapse/Expand">▼</button>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="plans-count" id="plans-count">— plans generated</div>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="view-toggle" id="compact-view-toggle" title="Compact View">📋</button>
+                            <button class="view-toggle active" id="detailed-view-toggle" title="Detailed View">📄</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="plans-content">
+                    <div class="plans-container" id="plans-container">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="plan-info-panel hidden" id="plan-info-panel">
+        <div class="panel-header">
+            <h4 id="panel-plan-title">Plan Information</h4>
+            <button class="close-panel-btn" id="close-panel-btn">×</button>
+        </div>
+        <div class="panel-content" id="panel-content">
+        </div>
+    </div>
+    <script src="js/programsData.js"></script>
+    <script src="js/courseData.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
