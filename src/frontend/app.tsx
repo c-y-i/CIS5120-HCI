@@ -1,3 +1,0 @@
-/**
- * This is a placeholder file, pls change or delete as we need...
- */
