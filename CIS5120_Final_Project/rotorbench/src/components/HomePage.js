@@ -13,7 +13,7 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   return (
-    <div className="app-container">
+    <div className={`app-container${menuOpen ? " menu-open" : ""}`}>
 
       <div className="top-bar">
         <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)}>☰</button>
@@ -99,6 +99,19 @@ export default function HomePage() {
             <button className="menu-item">Document</button>
           </div>
           {/* Click anywhere on the right to close */}
+          <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
+        </div>
+      )}
+      {menuOpen && (
+        <div className="menu-overlay">
+          <div className="menu-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-top-right">
+              <button className="icon-btn menu-btn" onClick={() => setMenuOpen(false)}>☰</button>
+            </div>
+            <button className="menu-item">Saved configure</button>
+            <button className="menu-item">Profile</button>
+            <button className="menu-item">Document</button>
+          </div>
           <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
         </div>
       )}

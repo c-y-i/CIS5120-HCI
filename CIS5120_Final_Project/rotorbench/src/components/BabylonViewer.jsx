@@ -24,9 +24,9 @@ const BabylonViewer = () => {
 
     const camera = new ArcRotateCamera(
       "cam",
-      Math.PI / 2,
-      Math.PI / 2.5,
-      5,
+      Math.PI /2,  // alpha: rotate around Y
+      Math.PI /2,   // beta: tilt down a bit
+      35,             // radius: distance
       Vector3.Zero(),
       scene
     );
