@@ -9,15 +9,27 @@ import {
 } from "@babylonjs/core";
 import "@babylonjs/loaders";
 
-const App: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+const BabylonViewer = () => {
+  const canvasRef = useRef(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const engine = new Engine(canvas, true, {
+      preserveDrawingBuffer: true,
+      stencil: true,
+    });
     const scene = new Scene(engine);
 
-    const camera = new ArcRotateCamera("cam", Math.PI / 2, Math.PI / 2.5, 5, Vector3.Zero(), scene);
+    const camera = new ArcRotateCamera(
+      "cam",
+      Math.PI / 2,
+      Math.PI / 2.5,
+      5,
+      Vector3.Zero(),
+      scene
+    );
     camera.attachControl(canvas, true);
 
     new HemisphericLight("hemi", new Vector3(0, 1, 0), scene);
@@ -28,17 +40,23 @@ const App: React.FC = () => {
       model.scaling = new Vector3(1, 1, 1);
 
       const step = 0.05;
-      const onKey = (e: KeyboardEvent) => {
+      const onKey = (e) => {
         if (e.key === "ArrowLeft") model.rotation.y -= step;
         if (e.key === "ArrowRight") model.rotation.y += step;
         if (e.key === "ArrowUp") model.rotation.x -= step;
         if (e.key === "ArrowDown") model.rotation.x += step;
       };
+
       window.addEventListener("keydown", onKey);
-      scene.onDisposeObservable.add(() => window.removeEventListener("keydown", onKey));
+      scene.onDisposeObservable.add(() =>
+        window.removeEventListener("keydown", onKey)
+      );
     });
 
-    engine.runRenderLoop(() => scene.render());
+    engine.runRenderLoop(() => {
+      scene.render();
+    });
+
     const onResize = () => engine.resize();
     window.addEventListener("resize", onResize);
 
@@ -50,10 +68,14 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
+    <div className="drone-wrapper">
+      <canvas
+        ref={canvasRef}
+        className="drone-canvas"
+        style={{ width: "100%", height: "100%", display: "block" }}
+      />
     </div>
   );
 };
 
-export default App;
+export default BabylonViewer;

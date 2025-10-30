@@ -7,6 +7,7 @@ import motorIcon from "../assets/motors.png";
 import propellerIcon from "../assets/propellers.png";
 import batteryIcon from "../assets/battery.png";
 import controllerIcon from "../assets/controller.png";
+import BabylonViewer from "../components/BabylonViewer";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -31,10 +32,8 @@ export default function HomePage() {
         <button className="switch-btn">3D View</button>
       </div>
 
-      {/* Drone image */}
-      <div className="drone-wrapper">
-        <img src={drone} alt="drone" className="drone-img" />
-      </div>
+      {/* 3D viewer */}
+      <BabylonViewer />
 
       {/* Spec Section */}
       <div className="spec-section">
