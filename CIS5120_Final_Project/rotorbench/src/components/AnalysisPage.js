@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useBuild } from "../context/BuildContext";
 import "../styles/home.css";
 import "../styles/analysis.css";
 import logo from "../assets/logo.png";
@@ -12,6 +13,7 @@ export default function AnalysisPage() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { updateAnalysis } = useBuild();
   const build = location.state?.build;
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function AnalysisPage() {
       const analysisData = await response.json();
       console.log("Analysis result:", analysisData);
       setAnalysis(analysisData);
+      // Save to context so HomePage can display it
+      updateAnalysis(analysisData);
     } catch (err) {
       setError(err.message);
       console.error("Analysis error:", err);

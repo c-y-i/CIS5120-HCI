@@ -9,7 +9,7 @@ import componentsData from "../data/components.json";
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { currentBuild } = useBuild();
+  const { currentBuild, analysisResults } = useBuild();
 
   // Get component details from current build
   const getComponent = (type, id) => {
@@ -23,6 +23,7 @@ export default function HomePage() {
   const fc = currentBuild ? getComponent("flight_controllers", currentBuild.componentIds?.flightControllerId) : null;
 
   const hasBuild = currentBuild && motor && propeller && battery;
+  const hasAnalysis = analysisResults && hasBuild;
   
   return (
     <div className={`app-container${menuOpen ? " menu-open" : ""}`}>
@@ -84,12 +85,30 @@ export default function HomePage() {
         </div>
 
         <div className="spec-right">
-          <div className="spec-info"><span>Total Weight</span><b>{hasBuild ? "Analyze" : "--"}</b></div>
-          <div className="spec-info"><span>T/W Ratio</span><b>{hasBuild ? "Analyze" : "--"}</b></div>
-          <div className="spec-info"><span>Battery Voltage</span><b>{battery ? battery.voltage + "V" : "--"}</b></div>
-          <div className="spec-info"><span>Battery Capacity</span><b>{battery ? battery.capacity + "mAh" : "--"}</b></div>
-          <div className="spec-info"><span>Current Draw</span><b>{hasBuild ? "Analyze" : "--"}</b></div>
-          <div className="spec-info"><span>Flight Time</span><b>{hasBuild ? "Analyze" : "--"}</b></div>
+          <div className="spec-info">
+            <span>Total Weight</span>
+            <b>{hasAnalysis ? analysisResults.performance.totalWeight + "g" : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>T/W Ratio</span>
+            <b>{hasAnalysis ? analysisResults.performance.thrustToWeightRatio + ":1" : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>Battery Voltage</span>
+            <b>{battery ? battery.voltage + "V" : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>Battery Capacity</span>
+            <b>{battery ? battery.capacity + "mAh" : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>Current Draw</span>
+            <b>{hasAnalysis ? analysisResults.flightSimulation.avgCurrentDraw + "A" : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>Flight Time</span>
+            <b>{hasAnalysis ? analysisResults.flightSimulation.estimatedFlightTime + "min" : "--"}</b>
+          </div>
         </div>
       </div>
 

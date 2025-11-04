@@ -476,14 +476,14 @@ def validate_build(build: DroneBuild) -> Tuple[bool, List[str], List[str]]:
             )
     
     if build.components.motors and build.components.esc:
-        # Check ESC current rating
-        motor_count = build.components.frame.motor_count if build.components.frame else 4
-        total_motor_current = build.components.motors.max_current * motor_count
-        esc_rating = build.components.esc.current_rating
+        # Check ESC current rating (per motor for 4-in-1 ESC)
+        # ESC current rating is per motor channel, not total
+        motor_max_current = build.components.motors.max_current
+        esc_rating_per_channel = build.components.esc.current_rating
         
-        if total_motor_current > esc_rating:
+        if motor_max_current > esc_rating_per_channel:
             warnings.append(
-                f"Total motor current ({total_motor_current}A) may exceed ESC rating ({esc_rating}A)"
+                f"Motor current ({motor_max_current}A) may exceed ESC rating ({esc_rating_per_channel}A per channel)"
             )
     
     if build.components.propellers and build.components.frame:

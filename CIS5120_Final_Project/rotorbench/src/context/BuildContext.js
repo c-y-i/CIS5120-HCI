@@ -25,6 +25,19 @@ export function BuildProvider({ children }) {
     return null;
   });
 
+  const [analysisResults, setAnalysisResults] = useState(() => {
+    const saved = localStorage.getItem("analysisResults");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved analysis:", e);
+        return null;
+      }
+    }
+    return null;
+  });
+
   // Save to localStorage whenever build changes
   useEffect(() => {
     if (currentBuild) {
@@ -34,16 +47,30 @@ export function BuildProvider({ children }) {
     }
   }, [currentBuild]);
 
+  // Save analysis results to localStorage
+  useEffect(() => {
+    if (analysisResults) {
+      localStorage.setItem("analysisResults", JSON.stringify(analysisResults));
+    } else {
+      localStorage.removeItem("analysisResults");
+    }
+  }, [analysisResults]);
+
   const updateBuild = (buildConfig) => {
     setCurrentBuild(buildConfig);
   };
 
+  const updateAnalysis = (analysis) => {
+    setAnalysisResults(analysis);
+  };
+
   const clearBuild = () => {
     setCurrentBuild(null);
+    setAnalysisResults(null);
   };
 
   return (
-    <BuildContext.Provider value={{ currentBuild, updateBuild, clearBuild }}>
+    <BuildContext.Provider value={{ currentBuild, updateBuild, analysisResults, updateAnalysis, clearBuild }}>
       {children}
     </BuildContext.Provider>
   );
