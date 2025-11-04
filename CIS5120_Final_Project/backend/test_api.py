@@ -10,13 +10,13 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from backend.utils.component_data import (
+from utils.component_data import (
     get_all_motors,
     get_all_batteries,
-    get_all_components
+    get_all_components_db
 )
-from backend.models.components import DroneBuild, DroneComponents
-from backend.utils.build_analysis import analyze_build
+from models.components import DroneBuild, DroneComponents
+from utils.build_analysis import analyze_build
 
 
 def test_data_loading():
@@ -35,7 +35,7 @@ def test_data_loading():
     if batteries:
         print(f"  Example: {batteries[0].name} - {batteries[0].capacity}mAh - ${batteries[0].price}")
     
-    all_components = get_all_components()
+    all_components = get_all_components_db()
     print(f"\n✓ Total components in database:")
     print(f"  Motors: {len(all_components.motors)}")
     print(f"  Propellers: {len(all_components.propellers)}")
@@ -43,7 +43,6 @@ def test_data_loading():
     print(f"  Flight Controllers: {len(all_components.flight_controllers)}")
     print(f"  Frames: {len(all_components.frames)}")
     print(f"  Batteries: {len(all_components.batteries)}")
-    print(f"  VTXs: {len(all_components.vtxs)}")
     print(f"  Receivers: {len(all_components.receivers)}")
     print()
 
@@ -124,7 +123,7 @@ def test_compatibility_validation():
     print("=" * 50)
     
     # Get sample components
-    all_components = get_all_components()
+    all_components = get_all_components_db()
     
     if not all_components.motors or not all_components.batteries:
         print("✗ Not enough components to test validation")
