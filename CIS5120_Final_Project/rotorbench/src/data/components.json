@@ -1,0 +1,367 @@
+{
+  "motors": [
+    {
+      "id": "motor-2207-1750kv",
+      "name": "2207 1750KV",
+      "kv": 1750,
+      "weight": 32,
+      "maxCurrent": 40,
+      "voltage": {
+        "min": 11.1,
+        "max": 25.2
+      },
+      "size": "2207",
+      "price": 18.99
+    },
+    {
+      "id": "motor-2207-1850kv",
+      "name": "2207 1850KV",
+      "kv": 1850,
+      "weight": 33,
+      "maxCurrent": 39,
+      "voltage": {
+        "min": 11.1,
+        "max": 25.2
+      },
+      "size": "2207",
+      "price": 19.99
+    },
+    {
+      "id": "motor-2306-1700kv",
+      "name": "2306 1700KV",
+      "kv": 1700,
+      "weight": 31,
+      "maxCurrent": 38,
+      "voltage": {
+        "min": 11.1,
+        "max": 22.2
+      },
+      "size": "2306",
+      "price": 16.99
+    },
+    {
+      "id": "motor-2306-2400kv",
+      "name": "2306 2400KV",
+      "kv": 2400,
+      "weight": 30,
+      "maxCurrent": 42,
+      "voltage": {
+        "min": 11.1,
+        "max": 18.5
+      },
+      "size": "2306",
+      "price": 17.99
+    },
+    {
+      "id": "motor-2207-2750kv",
+      "name": "2207 2750KV",
+      "kv": 2750,
+      "weight": 28,
+      "maxCurrent": 45,
+      "voltage": {
+        "min": 11.1,
+        "max": 14.8
+      },
+      "size": "2207",
+      "price": 15.99
+    }
+  ],
+  "propellers": [
+    {
+      "id": "prop-5140-tri",
+      "name": "5140 Tri-Blade",
+      "size": 5.1,
+      "pitch": 4.0,
+      "bladeCount": 3,
+      "weight": 4.2,
+      "material": "Polycarbonate",
+      "price": 2.49,
+      "thrustData": [
+        { "kv": 1700, "thrust": 1320 },
+        { "kv": 1850, "thrust": 1420 },
+        { "kv": 2400, "thrust": 1680 },
+        { "kv": 2750, "thrust": 1850 }
+      ]
+    },
+    {
+      "id": "prop-5143-tri",
+      "name": "5143 Tri-Blade",
+      "size": 5.1,
+      "pitch": 4.3,
+      "bladeCount": 3,
+      "weight": 4.5,
+      "material": "Polycarbonate",
+      "price": 2.79,
+      "thrustData": [
+        { "kv": 1700, "thrust": 1380 },
+        { "kv": 1850, "thrust": 1480 },
+        { "kv": 2400, "thrust": 1750 },
+        { "kv": 2750, "thrust": 1920 }
+      ]
+    },
+    {
+      "id": "prop-5146-tri",
+      "name": "5146 Tri-Blade",
+      "size": 5.1,
+      "pitch": 4.6,
+      "bladeCount": 3,
+      "weight": 4.8,
+      "material": "Polycarbonate",
+      "price": 2.99,
+      "thrustData": [
+        { "kv": 1700, "thrust": 1450 },
+        { "kv": 1850, "thrust": 1560 },
+        { "kv": 2400, "thrust": 1820 },
+        { "kv": 2750, "thrust": 2000 }
+      ]
+    },
+    {
+      "id": "prop-5040-quad",
+      "name": "5040 Quad-Blade",
+      "size": 5.0,
+      "pitch": 4.0,
+      "bladeCount": 4,
+      "weight": 5.1,
+      "material": "Polycarbonate",
+      "price": 3.29,
+      "thrustData": [
+        { "kv": 1700, "thrust": 1400 },
+        { "kv": 1850, "thrust": 1500 },
+        { "kv": 2400, "thrust": 1780 },
+        { "kv": 2750, "thrust": 1950 }
+      ]
+    }
+  ],
+  "escs": [
+    {
+      "id": "esc-mamba-f55a",
+      "name": "MAMBA F55A 4in1",
+      "manufacturer": "Diatone",
+      "currentRating": 55,
+      "burstCurrent": 65,
+      "weight": 8.5,
+      "voltage": {
+        "min": 11.1,
+        "max": 25.2
+      },
+      "protocol": ["DShot600", "DShot300", "Multishot"],
+      "price": 49.99
+    },
+    {
+      "id": "esc-iflight-succex-45a",
+      "name": "SucceX-E 45A 4in1",
+      "manufacturer": "iFlight",
+      "currentRating": 45,
+      "burstCurrent": 55,
+      "weight": 7.2,
+      "voltage": {
+        "min": 11.1,
+        "max": 25.2
+      },
+      "protocol": ["DShot600", "DShot300"],
+      "price": 39.99
+    },
+    {
+      "id": "esc-holybro-tekko32-50a",
+      "name": "Tekko32 F4 50A 4in1",
+      "manufacturer": "Holybro",
+      "currentRating": 50,
+      "burstCurrent": 60,
+      "weight": 8.0,
+      "voltage": {
+        "min": 11.1,
+        "max": 25.2
+      },
+      "protocol": ["DShot600", "DShot300", "Oneshot125"],
+      "price": 44.99
+    }
+  ],
+  "flight_controllers": [
+    {
+      "id": "fc-speedybee-f405-v3",
+      "name": "SpeedyBee F405 V3",
+      "manufacturer": "SpeedyBee",
+      "processor": "STM32F405",
+      "weight": 6.2,
+      "firmware": ["Betaflight", "INAV"],
+      "imu": "ICM42688P",
+      "maxVoltage": 25.2,
+      "features": ["OSD", "Blackbox", "Barometer", "Bluetooth"],
+      "price": 39.99
+    },
+    {
+      "id": "fc-holybro-kakute-f7",
+      "name": "Kakute F7 AIO",
+      "manufacturer": "Holybro",
+      "processor": "STM32F722",
+      "weight": 5.8,
+      "firmware": ["Betaflight", "Ardupilot"],
+      "imu": "MPU6000",
+      "maxVoltage": 25.2,
+      "features": ["OSD", "Blackbox", "Barometer"],
+      "price": 49.99
+    },
+    {
+      "id": "fc-mamba-f722",
+      "name": "MAMBA F722 MK2",
+      "manufacturer": "Diatone",
+      "processor": "STM32F722",
+      "weight": 6.5,
+      "firmware": ["Betaflight"],
+      "imu": "ICM42688P",
+      "maxVoltage": 25.2,
+      "features": ["OSD", "Blackbox"],
+      "price": 44.99
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame-5inch-220mm",
+      "name": "5\" Frame 220mm",
+      "size": 220,
+      "weight": 95,
+      "material": "Carbon Fiber",
+      "motorCount": 4,
+      "maxPropSize": 5.1,
+      "stackHeight": 30,
+      "price": 34.99
+    },
+    {
+      "id": "frame-5inch-225mm",
+      "name": "5\" Frame 225mm",
+      "size": 225,
+      "weight": 112,
+      "material": "Carbon Fiber",
+      "motorCount": 4,
+      "maxPropSize": 5.1,
+      "stackHeight": 30,
+      "price": 39.99
+    },
+    {
+      "id": "frame-5inch-230mm",
+      "name": "5\" Frame 230mm",
+      "size": 230,
+      "weight": 124,
+      "material": "Carbon Fiber",
+      "motorCount": 4,
+      "maxPropSize": 5.1,
+      "stackHeight": 30,
+      "price": 42.99
+    }
+  ],
+  "batteries": [
+    {
+      "id": "battery-4s-1550mah-95c",
+      "name": "4S 1550mAh 95C",
+      "capacity": 1550,
+      "voltage": 14.8,
+      "cells": 4,
+      "cRating": 95,
+      "weight": 185,
+      "dischargeProfile": [
+        { "percentage": 100, "voltage": 16.8 },
+        { "percentage": 90, "voltage": 16.5 },
+        { "percentage": 80, "voltage": 16.1 },
+        { "percentage": 70, "voltage": 15.7 },
+        { "percentage": 60, "voltage": 15.3 },
+        { "percentage": 50, "voltage": 14.9 },
+        { "percentage": 40, "voltage": 14.5 },
+        { "percentage": 30, "voltage": 14.1 },
+        { "percentage": 20, "voltage": 13.7 },
+        { "percentage": 10, "voltage": 13.3 },
+        { "percentage": 0, "voltage": 12.0 }
+      ],
+      "price": 32.99
+    },
+    {
+      "id": "battery-4s-1500mah-75c",
+      "name": "4S 1500mAh 75C",
+      "capacity": 1500,
+      "voltage": 14.8,
+      "cells": 4,
+      "cRating": 75,
+      "weight": 168,
+      "dischargeProfile": [
+        { "percentage": 100, "voltage": 16.8 },
+        { "percentage": 90, "voltage": 16.4 },
+        { "percentage": 80, "voltage": 16.0 },
+        { "percentage": 70, "voltage": 15.6 },
+        { "percentage": 60, "voltage": 15.2 },
+        { "percentage": 50, "voltage": 14.8 },
+        { "percentage": 40, "voltage": 14.4 },
+        { "percentage": 30, "voltage": 14.0 },
+        { "percentage": 20, "voltage": 13.6 },
+        { "percentage": 10, "voltage": 13.2 },
+        { "percentage": 0, "voltage": 12.0 }
+      ],
+      "price": 24.99
+    },
+    {
+      "id": "battery-6s-1300mah-120c",
+      "name": "6S 1300mAh 120C",
+      "capacity": 1300,
+      "voltage": 22.2,
+      "cells": 6,
+      "cRating": 120,
+      "weight": 232,
+      "dischargeProfile": [
+        { "percentage": 100, "voltage": 25.2 },
+        { "percentage": 90, "voltage": 24.6 },
+        { "percentage": 80, "voltage": 24.0 },
+        { "percentage": 70, "voltage": 23.4 },
+        { "percentage": 60, "voltage": 22.8 },
+        { "percentage": 50, "voltage": 22.2 },
+        { "percentage": 40, "voltage": 21.6 },
+        { "percentage": 30, "voltage": 21.0 },
+        { "percentage": 20, "voltage": 20.4 },
+        { "percentage": 10, "voltage": 19.8 },
+        { "percentage": 0, "voltage": 18.0 }
+      ],
+      "price": 39.99
+    },
+    {
+      "id": "battery-4s-5000mah-100c",
+      "name": "4S 5000mAh 100C",
+      "capacity": 5000,
+      "voltage": 14.8,
+      "cells": 4,
+      "cRating": 100,
+      "weight": 462,
+      "dischargeProfile": [
+        { "percentage": 100, "voltage": 16.8 },
+        { "percentage": 90, "voltage": 16.4 },
+        { "percentage": 80, "voltage": 16.0 },
+        { "percentage": 70, "voltage": 15.6 },
+        { "percentage": 60, "voltage": 15.2 },
+        { "percentage": 50, "voltage": 14.8 },
+        { "percentage": 40, "voltage": 14.4 },
+        { "percentage": 30, "voltage": 14.0 },
+        { "percentage": 20, "voltage": 13.6 },
+        { "percentage": 10, "voltage": 13.2 },
+        { "percentage": 0, "voltage": 12.0 }
+      ],
+      "price": 44.99
+    }
+  ],
+  "receivers": [
+    {
+      "id": "rx-elrs-24g",
+      "name": "ELRS 2.4G RX",
+      "protocol": "CRSF",
+      "weight": 1.2,
+      "currentDraw": 45,
+      "channels": 8,
+      "price": 15.99
+    },
+    {
+      "id": "rx-frsky-xm",
+      "name": "FrSky XM+ RX",
+      "protocol": "SBUS",
+      "weight": 3.8,
+      "currentDraw": 100,
+      "channels": 16,
+      "price": 19.99
+    }
+  ]
+}
+

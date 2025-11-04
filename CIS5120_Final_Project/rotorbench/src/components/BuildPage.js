@@ -1,15 +1,49 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/home.css"; // reuse container + icons etc.
+import "../styles/home.css";
 import logo from "../assets/logo.png";
+import componentsData from "../data/components.json";
 
 export default function BuildPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Component selections
+  const [selectedFrame, setSelectedFrame] = useState("");
+  const [selectedMotor, setSelectedMotor] = useState("");
+  const [selectedPropeller, setSelectedPropeller] = useState("");
+  const [selectedESC, setSelectedESC] = useState("");
+  const [selectedFC, setSelectedFC] = useState("");
+  const [selectedBattery, setSelectedBattery] = useState("");
+  const [selectedReceiver, setSelectedReceiver] = useState("");
+
+  const handleAnalyze = () => {
+    // Create build config
+    const build = {
+      id: "build-" + Date.now(),
+      name: "Custom Build",
+      description: "User created build",
+      componentIds: {
+        frameId: selectedFrame || null,
+        motorId: selectedMotor || null,
+        propellerId: selectedPropeller || null,
+        escId: selectedESC || null,
+        flightControllerId: selectedFC || null,
+        batteryId: selectedBattery || null,
+        receiverId: selectedReceiver || null,
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Navigate to analysis page
+    navigate("/analysis", { state: { build } });
+  };
+
+  const canAnalyze = selectedMotor && selectedPropeller && selectedBattery && selectedFrame;
+
   return (
     <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
-
       {/* Top Bar */}
       <div className="top-bar">
         <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)}>
@@ -21,55 +55,193 @@ export default function BuildPage() {
           <span className="logo-text">RotorBench</span>
         </div>
 
-        {/* Home Button */}
         <button className="icon-btn home-btn" onClick={() => navigate("/")}>
           🏠
         </button>
       </div>
 
       {/* Page Title */}
-      <div className="section-title">Drone Build Preset</div>
+      <div className="section-title" style={{ fontSize: "20px", fontWeight: "600" }}>
+        Build Configuration
+      </div>
 
-      {/* Preset Dropdown */}
-      <select className="input-field">
-        <option>Example Preset</option>
-      </select>
-
-      {/* Search Inputs */}
-      {["Flight controller", "ESC", "Power system"].map((label) => (
-        <div className="search-row" key={label}>
-          <input className="search-input" placeholder={label} />
-          <button className="search-btn-small">🔍</button>
-          <button className="search-btn-small">✖</button>
+      {/* Frame Selection */}
+      <div>
+        <div className="section-title">🔲 Frame</div>
+        <div className="select-row">
+          <select
+            className="input-field"
+            value={selectedFrame}
+            onChange={(e) => setSelectedFrame(e.target.value)}
+            style={{ flex: 1 }}
+          >
+            <option value="">Select frame...</option>
+            {componentsData.frames.map((frame) => (
+              <option key={frame.id} value={frame.id}>
+                {frame.name} - ${frame.price}
+              </option>
+            ))}
+          </select>
+          {selectedFrame && (
+            <button className="reset-btn" onClick={() => setSelectedFrame("")}>
+              Reset
+            </button>
+          )}
         </div>
-      ))}
+      </div>
 
-      {/* Frame / Motors / etc. */}
-      {[
-        ["Frame", "size / configuration"],
-        ["Motors", "kv / size"],
-        ["Propellers", "size / blades"],
-        ["Video System", "VTX type"],
-      ].map(([title, placeholder]) => (
-        <div key={title}>
-          <div className="section-title">{title}</div>
-          <div className="select-row">
-            <select className="input-field">
-              <option>{placeholder}</option>
-            </select>
-            <button className="reset-btn">Reset</button>
-          </div>
+      {/* Motor Selection */}
+      <div>
+        <div className="section-title">⚙️ Motors</div>
+        <div className="select-row">
+          <select
+            className="input-field"
+            value={selectedMotor}
+            onChange={(e) => setSelectedMotor(e.target.value)}
+            style={{ flex: 1 }}
+          >
+            <option value="">Select motor...</option>
+            {componentsData.motors.map((motor) => (
+              <option key={motor.id} value={motor.id}>
+                {motor.name} - ${motor.price}
+              </option>
+            ))}
+          </select>
+          {selectedMotor && (
+            <button className="reset-btn" onClick={() => setSelectedMotor("")}>
+              Reset
+            </button>
+          )}
         </div>
-      ))}
+      </div>
 
-      {/* Budget Slider */}
-      <div className="section-title">Budget</div>
-      <input type="range" min="0" max="1000" className="slider" />
-      <div className="section-title">Currency: $ USD</div>
+      {/* Propeller Selection */}
+      <div>
+        <div className="section-title">🔄 Propellers</div>
+        <div className="select-row">
+          <select
+            className="input-field"
+            value={selectedPropeller}
+            onChange={(e) => setSelectedPropeller(e.target.value)}
+            style={{ flex: 1 }}
+          >
+            <option value="">Select propeller...</option>
+            {componentsData.propellers.map((prop) => (
+              <option key={prop.id} value={prop.id}>
+                {prop.name} - ${prop.price}
+              </option>
+            ))}
+          </select>
+          {selectedPropeller && (
+            <button className="reset-btn" onClick={() => setSelectedPropeller("")}>
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
 
-      {/* Save Button */}
+      {/* ESC Selection */}
+      <div>
+        <div className="section-title">⚡ ESC</div>
+        <div className="select-row">
+          <select className="input-field" value={selectedESC} onChange={(e) => setSelectedESC(e.target.value)} style={{ flex: 1 }}>
+            <option value="">Select ESC...</option>
+            {componentsData.escs.map((esc) => (
+              <option key={esc.id} value={esc.id}>
+                {esc.manufacturer} {esc.name} - ${esc.price}
+              </option>
+            ))}
+          </select>
+          {selectedESC && (
+            <button className="reset-btn" onClick={() => setSelectedESC("")}>
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Flight Controller Selection */}
+      <div>
+        <div className="section-title">🖥️ Flight Controller</div>
+        <div className="select-row">
+          <select className="input-field" value={selectedFC} onChange={(e) => setSelectedFC(e.target.value)} style={{ flex: 1 }}>
+            <option value="">Select flight controller...</option>
+            {componentsData.flight_controllers.map((fc) => (
+              <option key={fc.id} value={fc.id}>
+                {fc.manufacturer} {fc.name} - ${fc.price}
+              </option>
+            ))}
+          </select>
+          {selectedFC && (
+            <button className="reset-btn" onClick={() => setSelectedFC("")}>
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Battery Selection */}
+      <div>
+        <div className="section-title">🔋 Battery</div>
+        <div className="select-row">
+          <select
+            className="input-field"
+            value={selectedBattery}
+            onChange={(e) => setSelectedBattery(e.target.value)}
+            style={{ flex: 1 }}
+          >
+            <option value="">Select battery...</option>
+            {componentsData.batteries.map((battery) => (
+              <option key={battery.id} value={battery.id}>
+                {battery.name} - ${battery.price}
+              </option>
+            ))}
+          </select>
+          {selectedBattery && (
+            <button className="reset-btn" onClick={() => setSelectedBattery("")}>
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Receiver Selection */}
+      <div>
+        <div className="section-title">📡 Receiver (Optional)</div>
+        <div className="select-row">
+          <select
+            className="input-field"
+            value={selectedReceiver}
+            onChange={(e) => setSelectedReceiver(e.target.value)}
+            style={{ flex: 1 }}
+          >
+            <option value="">Select receiver...</option>
+            {componentsData.receivers.map((rx) => (
+              <option key={rx.id} value={rx.id}>
+                {rx.name} - ${rx.price}
+              </option>
+            ))}
+          </select>
+          {selectedReceiver && (
+            <button className="reset-btn" onClick={() => setSelectedReceiver("")}>
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Info Message */}
+      {!canAnalyze && (
+        <div style={{ margin: "20px 14px", padding: "12px", background: "#fff3e0", borderRadius: "8px", fontSize: "13px" }}>
+          ⚠️ Please select at least Frame, Motor, Propeller, and Battery to analyze
+        </div>
+      )}
+
+      {/* Bottom Buttons */}
       <div className="bottom-buttons">
-        <button className="action-btn save">💾 Save</button>
+        <button className="action-btn analysis" disabled={!canAnalyze} onClick={handleAnalyze} style={{ opacity: canAnalyze ? 1 : 0.5 }}>
+          📊 Analyze
+        </button>
       </div>
 
       {/* Drawer (contained in phone) */}
@@ -81,11 +253,13 @@ export default function BuildPage() {
                 ☰
               </button>
             </div>
-            <button className="menu-item">Saved configure</button>
+            <button className="menu-item" onClick={() => navigate("/")}>
+              Home
+            </button>
+            <button className="menu-item">Saved Builds</button>
             <button className="menu-item">Profile</button>
-            <button className="menu-item">Document</button>
+            <button className="menu-item">Documentation</button>
           </div>
-          {/* click outside to close */}
           <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
         </div>
       )}

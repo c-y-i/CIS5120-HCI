@@ -2,120 +2,223 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/home.css";
 import logo from "../assets/logo.png";
-import drone from "../assets/drone.png";
-import motorIcon from "../assets/motors.png";
-import propellerIcon from "../assets/propellers.png";
-import batteryIcon from "../assets/battery.png";
-import controllerIcon from "../assets/controller.png";
-import BabylonViewer from "../components/BabylonViewer";
+import componentsData from "../data/components.json";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Component selections
+  const [selectedFrame, setSelectedFrame] = useState("");
+  const [selectedMotor, setSelectedMotor] = useState("");
+  const [selectedPropeller, setSelectedPropeller] = useState("");
+  const [selectedBattery, setSelectedBattery] = useState("");
+  const [selectedFC, setSelectedFC] = useState("");
+
+  // Get selected component objects
+  const frame = componentsData.frames.find((f) => f.id === selectedFrame);
+  const motor = componentsData.motors.find((m) => m.id === selectedMotor);
+  const propeller = componentsData.propellers.find((p) => p.id === selectedPropeller);
+  const battery = componentsData.batteries.find((b) => b.id === selectedBattery);
+  const fc = componentsData.flight_controllers.find((f) => f.id === selectedFC);
+
+  // Check if minimum components are selected for analysis
+  const canAnalyze = selectedMotor && selectedPropeller && selectedBattery && selectedFrame;
+
+  const handleAnalyze = () => {
+    if (!canAnalyze) return;
+
+    // Create build config
+    const build = {
+      id: "build-" + Date.now(),
+      name: "Quick Analysis",
+      description: "Analysis from home page",
+      componentIds: {
+        frameId: selectedFrame,
+        motorId: selectedMotor,
+        propellerId: selectedPropeller,
+        escId: null,
+        flightControllerId: selectedFC || null,
+        batteryId: selectedBattery,
+        receiverId: null,
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Navigate to analysis page
+    navigate("/analysis", { state: { build } });
+  };
+
   return (
     <div className={`app-container${menuOpen ? " menu-open" : ""}`}>
-
       <div className="top-bar">
-        <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)}>☰</button>
+        <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)}>
+          ☰
+        </button>
 
         <div className="logo-area">
           <img src={logo} alt="logo" className="logo-icon" />
           <span className="logo-text">RotorBench</span>
         </div>
 
-        <button className="icon-btn search-btn" onClick={() => navigate("/build")}>🔍</button>
+        <button className="icon-btn search-btn" onClick={() => navigate("/build")}>
+          🔍
+        </button>
       </div>
 
-      {/* View Switch */}
-      <div className="view-switch">
-        <button className="switch-btn">Detailed View</button>
-        <button className="switch-btn">3D View</button>
+      {/* Title */}
+      <div className="section-title" style={{ fontSize: "20px", fontWeight: "600", marginTop: "16px" }}>
+        Quick Build Analysis
       </div>
 
-      {/* 3D viewer */}
-      <BabylonViewer />
-
-      {/* Spec Section */}
-      <div className="spec-section">
-        <div className="spec-left">
-          <div className="spec-card">
-            <img src={motorIcon} alt="motor" className="spec-icon" />
-            <div>
-              <div className="spec-title">Motors</div>
-              <div className="spec-value">2306 2400KV</div>
-            </div>
-          </div>
-
-          <div className="spec-card">
-            <img src={propellerIcon} alt="propeller" className="spec-icon" />
-            <div>
-              <div className="spec-title">Propellers</div>
-              <div className="spec-value">5x5x3 HQ Prop</div>
-            </div>
-          </div>
-
-          <div className="spec-card">
-            <img src={batteryIcon} alt="battery" className="spec-icon" />
-            <div>
-              <div className="spec-title">Battery</div>
-              <div className="spec-value">4S 5000mAh LiPo</div>
-            </div>
-          </div>
-
-          <div className="spec-card">
-            <img src={controllerIcon} alt="controller" className="spec-icon" />
-            <div>
-              <div className="spec-title">Flight Controller</div>
-              <div className="spec-value">JHEMCU F405</div>
-            </div>
+      {/* Component Selection Cards */}
+      <div style={{ padding: "0 14px" }}>
+        {/* Motor Selection */}
+        <div className="component-select-card">
+          <div className="component-select-icon">⚙️</div>
+          <div className="component-select-content">
+            <div className="component-select-label">Motors *</div>
+            <select
+              value={selectedMotor}
+              onChange={(e) => setSelectedMotor(e.target.value)}
+              className="component-select-dropdown"
+            >
+              <option value="">Select motor...</option>
+              {componentsData.motors.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <div className="spec-right">
-          <div className="spec-info"><span>Total Weight</span><b>740g</b></div>
-          <div className="spec-info"><span>T/W Ratio</span><b>7.0:1</b></div>
-          <div className="spec-info"><span>Battery Voltage</span><b>14.8V</b></div>
-          <div className="spec-info"><span>Battery Capacity</span><b>5000mAh</b></div>
-          <div className="spec-info"><span>Current Draw</span><b>53.2A</b></div>
-          <div className="spec-info"><span>Flight Time</span><b>5min</b></div>
+        {/* Propeller Selection */}
+        <div className="component-select-card">
+          <div className="component-select-icon">🔄</div>
+          <div className="component-select-content">
+            <div className="component-select-label">Propellers *</div>
+            <select
+              value={selectedPropeller}
+              onChange={(e) => setSelectedPropeller(e.target.value)}
+              className="component-select-dropdown"
+            >
+              <option value="">Select propeller...</option>
+              {componentsData.propellers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+
+        {/* Battery Selection */}
+        <div className="component-select-card">
+          <div className="component-select-icon">🔋</div>
+          <div className="component-select-content">
+            <div className="component-select-label">Battery *</div>
+            <select
+              value={selectedBattery}
+              onChange={(e) => setSelectedBattery(e.target.value)}
+              className="component-select-dropdown"
+            >
+              <option value="">Select battery...</option>
+              {componentsData.batteries.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Frame Selection */}
+        <div className="component-select-card">
+          <div className="component-select-icon">🔲</div>
+          <div className="component-select-content">
+            <div className="component-select-label">Frame *</div>
+            <select
+              value={selectedFrame}
+              onChange={(e) => setSelectedFrame(e.target.value)}
+              className="component-select-dropdown"
+            >
+              <option value="">Select frame...</option>
+              {componentsData.frames.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Flight Controller Selection (Optional) */}
+        <div className="component-select-card">
+          <div className="component-select-icon">🖥️</div>
+          <div className="component-select-content">
+            <div className="component-select-label">Flight Controller (Optional)</div>
+            <select value={selectedFC} onChange={(e) => setSelectedFC(e.target.value)} className="component-select-dropdown">
+              <option value="">Select FC...</option>
+              {componentsData.flight_controllers.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.manufacturer} {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Info/Warning Message */}
+        {!canAnalyze ? (
+          <div className="info-message">
+            ⚠️ Select Motor, Propeller, Battery, and Frame to enable analysis
+          </div>
+        ) : (
+          <div className="success-message">✅ Ready to analyze! Click the Analysis button below.</div>
+        )}
       </div>
 
       {/* Bottom Buttons */}
       <div className="bottom-buttons">
-        <button className="action-btn save">💾 Save</button>
-        <button className="action-btn analysis">ℹ️ Analysis</button>
-        <button className="action-btn order">🛒 Order</button>
+        <button className="action-btn save" disabled={!canAnalyze} style={{ opacity: canAnalyze ? 1 : 0.5 }}>
+          💾 Save
+        </button>
+        <button
+          className="action-btn analysis"
+          disabled={!canAnalyze}
+          onClick={handleAnalyze}
+          style={{
+            opacity: canAnalyze ? 1 : 0.5,
+            cursor: canAnalyze ? "pointer" : "not-allowed",
+          }}
+        >
+          ℹ️ Analysis
+        </button>
+        <button className="action-btn order" disabled={!canAnalyze} style={{ opacity: canAnalyze ? 1 : 0.5 }}>
+          🛒 Order
+        </button>
       </div>
 
       {menuOpen && (
         <div className="menu-overlay">
           <div className="menu-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="drawer-top-right">
-              <button className="icon-btn menu-btn" onClick={() => setMenuOpen(false)}>☰</button>
+              <button className="icon-btn menu-btn" onClick={() => setMenuOpen(false)}>
+                ☰
+              </button>
             </div>
-            <button className="menu-item">Saved configure</button>
+            <button className="menu-item" onClick={() => navigate("/build")}>
+              Full Build Configuration
+            </button>
+            <button className="menu-item">Saved Builds</button>
             <button className="menu-item">Profile</button>
-            <button className="menu-item">Document</button>
-          </div>
-          {/* Click anywhere on the right to close */}
-          <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
-        </div>
-      )}
-      {menuOpen && (
-        <div className="menu-overlay">
-          <div className="menu-drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="drawer-top-right">
-              <button className="icon-btn menu-btn" onClick={() => setMenuOpen(false)}>☰</button>
-            </div>
-            <button className="menu-item">Saved configure</button>
-            <button className="menu-item">Profile</button>
-            <button className="menu-item">Document</button>
+            <button className="menu-item">Documentation</button>
           </div>
           <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
         </div>
       )}
-
     </div>
   );
 }

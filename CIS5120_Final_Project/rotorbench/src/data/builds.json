@@ -1,0 +1,19 @@
+[
+  {
+    "id": "build-racing-5inch",
+    "name": "Racing 5-inch Build",
+    "description": "Balanced freestyle/racing quad with good flight time",
+    "componentIds": {
+      "frameId": "frame-5inch-225mm",
+      "motorId": "motor-2207-1850kv",
+      "propellerId": "prop-5143-tri",
+      "escId": "esc-iflight-succex-45a",
+      "flightControllerId": "fc-speedybee-f405-v3",
+      "batteryId": "battery-4s-1550mah-95c",
+      "receiverId": "rx-elrs-24g"
+    },
+    "createdAt": "2025-11-04T10:00:00.000Z",
+    "updatedAt": "2025-11-04T10:00:00.000Z"
+  }
+]
+
