@@ -85,14 +85,15 @@ export default function AnalysisPage() {
     const receiver = getComponentById("receivers", buildConfig.componentIds.receiverId);
 
     // Log for debugging
-    console.log("Hydrated build:", {
-      frame,
-      motors,
-      propellers,
-      esc,
-      flightController,
-      battery,
-      receiver,
+    console.log("Build config IDs:", buildConfig.componentIds);
+    console.log("Hydrated components:", {
+      frame: frame ? "✓ " + frame.name : "✗ null",
+      motors: motors ? "✓ " + motors.name : "✗ null",
+      propellers: propellers ? "✓ " + propellers.name : "✗ null",
+      esc: esc ? "✓ " + esc.name : "✗ null",
+      flightController: flightController ? "✓ " + flightController.name : "✗ null",
+      battery: battery ? "✓ " + battery.name : "✗ null",
+      receiver: receiver ? "✓ " + receiver.name : "✗ null",
     });
 
     return {

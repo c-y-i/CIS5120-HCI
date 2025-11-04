@@ -170,9 +170,12 @@ class DroneComponents(BaseModel):
     motors: Optional[Motor] = None
     propellers: Optional[Propeller] = None
     esc: Optional[ESC] = None
-    flight_controller: Optional[FlightController] = None
+    flight_controller: Optional[FlightController] = Field(None, alias="flightController")
     battery: Optional[Battery] = None
     receiver: Optional[Receiver] = None
+
+    class Config:
+        populate_by_name = True
 
 
 class DroneBuild(BaseModel):

@@ -435,19 +435,22 @@ def validate_build(build: DroneBuild) -> Tuple[bool, List[str], List[str]]:
     errors = []
     warnings = []
     
-    # Check required components
+    # Check required components (minimum for analysis)
     if not build.components.frame:
         errors.append("Frame is required")
     if not build.components.motors:
         errors.append("Motors are required")
     if not build.components.propellers:
         errors.append("Propellers are required")
-    if not build.components.esc:
-        errors.append("ESC is required")
-    if not build.components.flight_controller:
-        errors.append("Flight controller is required")
     if not build.components.battery:
         errors.append("Battery is required")
+    
+    # ESC and Flight Controller are optional for basic analysis
+    # Add warnings if missing
+    if not build.components.esc:
+        warnings.append("ESC not selected - some calculations may be limited")
+    if not build.components.flight_controller:
+        warnings.append("Flight controller not selected - weight calculation excludes FC")
     
     # Check compatibility
     if build.components.motors and build.components.battery:

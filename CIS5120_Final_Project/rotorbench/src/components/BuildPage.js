@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useBuild } from "../context/BuildContext";
 import "../styles/home.css";
 import logo from "../assets/logo.png";
 import componentsData from "../data/components.json";
@@ -7,8 +8,9 @@ import componentsData from "../data/components.json";
 export default function BuildPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { currentBuild, updateBuild } = useBuild();
 
-  // Component selections
+  // Component selections - initialize from context if available
   const [selectedFrame, setSelectedFrame] = useState("");
   const [selectedMotor, setSelectedMotor] = useState("");
   const [selectedPropeller, setSelectedPropeller] = useState("");
@@ -17,12 +19,25 @@ export default function BuildPage() {
   const [selectedBattery, setSelectedBattery] = useState("");
   const [selectedReceiver, setSelectedReceiver] = useState("");
 
-  const handleAnalyze = () => {
-    // Create build config
+  // Load from context on mount
+  useEffect(() => {
+    if (currentBuild?.componentIds) {
+      setSelectedFrame(currentBuild.componentIds.frameId || "");
+      setSelectedMotor(currentBuild.componentIds.motorId || "");
+      setSelectedPropeller(currentBuild.componentIds.propellerId || "");
+      setSelectedESC(currentBuild.componentIds.escId || "");
+      setSelectedFC(currentBuild.componentIds.flightControllerId || "");
+      setSelectedBattery(currentBuild.componentIds.batteryId || "");
+      setSelectedReceiver(currentBuild.componentIds.receiverId || "");
+    }
+  }, []);
+
+  const handleSave = () => {
+    // Create/update build config
     const build = {
-      id: "build-" + Date.now(),
-      name: "Custom Build",
-      description: "User created build",
+      id: currentBuild?.id || "build-" + Date.now(),
+      name: currentBuild?.name || "Custom Build",
+      description: currentBuild?.description || "User created build",
       componentIds: {
         frameId: selectedFrame || null,
         motorId: selectedMotor || null,
@@ -32,9 +47,38 @@ export default function BuildPage() {
         batteryId: selectedBattery || null,
         receiverId: selectedReceiver || null,
       },
-      createdAt: new Date().toISOString(),
+      createdAt: currentBuild?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
+    // Save to context
+    updateBuild(build);
+    
+    // Navigate back to home
+    navigate("/");
+  };
+
+  const handleAnalyze = () => {
+    // Create build config
+    const build = {
+      id: currentBuild?.id || "build-" + Date.now(),
+      name: currentBuild?.name || "Custom Build",
+      description: currentBuild?.description || "User created build",
+      componentIds: {
+        frameId: selectedFrame || null,
+        motorId: selectedMotor || null,
+        propellerId: selectedPropeller || null,
+        escId: selectedESC || null,
+        flightControllerId: selectedFC || null,
+        batteryId: selectedBattery || null,
+        receiverId: selectedReceiver || null,
+      },
+      createdAt: currentBuild?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Save to context
+    updateBuild(build);
 
     // Navigate to analysis page
     navigate("/analysis", { state: { build } });
@@ -239,6 +283,9 @@ export default function BuildPage() {
 
       {/* Bottom Buttons */}
       <div className="bottom-buttons">
+        <button className="action-btn save" onClick={handleSave}>
+          💾 Save & Home
+        </button>
         <button className="action-btn analysis" disabled={!canAnalyze} onClick={handleAnalyze} style={{ opacity: canAnalyze ? 1 : 0.5 }}>
           📊 Analyze
         </button>
