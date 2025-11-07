@@ -5,6 +5,16 @@ import "../styles/home.css";
 import "../styles/analysis.css";
 import logo from "../assets/logo.png";
 import componentsData from "../data/components.json";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function AnalysisPage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -29,7 +39,7 @@ export default function AnalysisPage() {
     try {
       // Hydrate build with full component objects
       const hydratedBuild = hydrateBuild(build);
-      
+
       console.log("Sending to API:", JSON.stringify(hydratedBuild, null, 2));
 
       const response = await fetch("http://localhost:8000/api/builds/analyze", {
@@ -355,58 +365,68 @@ export default function AnalysisPage() {
           </div>
 
           {/* Battery Discharge Curve */}
-          <div className="chart-section">
-            <h3 className="section-header">📉 Battery Discharge Curve</h3>
-            <div className="discharge-chart">
-              <svg viewBox="0 0 300 200" className="chart-svg">
-                {/* Grid lines */}
-                <line x1="40" y1="20" x2="40" y2="180" stroke="#ccc" strokeWidth="1" />
-                <line x1="40" y1="180" x2="280" y2="180" stroke="#ccc" strokeWidth="1" />
-
-                {/* Voltage line */}
-                <polyline
-                  fill="none"
-                  stroke="#2196f3"
-                  strokeWidth="2"
-                  points={analysis.flightSimulation.dischargeData
-                    .map((d, i) => {
-                      const x = 40 + (i / (analysis.flightSimulation.dischargeData.length - 1)) * 240;
-                      const maxV = analysis.flightSimulation.dischargeData[0].voltage;
-                      const minV = analysis.flightSimulation.dischargeData[analysis.flightSimulation.dischargeData.length - 1].voltage;
-                      const y = 180 - ((d.voltage - minV) / (maxV - minV)) * 140;
-                      return `${x},${y}`;
-                    })
-                    .join(" ")}
-                />
-
-                {/* Capacity line */}
-                <polyline
-                  fill="none"
-                  stroke="#4caf50"
-                  strokeWidth="2"
-                  strokeDasharray="4,2"
-                  points={analysis.flightSimulation.dischargeData
-                    .map((d, i) => {
-                      const x = 40 + (i / (analysis.flightSimulation.dischargeData.length - 1)) * 240;
-                      const y = 180 - (d.remainingCapacity / analysis.flightSimulation.batteryCapacity) * 140;
-                      return `${x},${y}`;
-                    })
-                    .join(" ")}
-                />
-
-                {/* Labels */}
-                <text x="10" y="30" fontSize="10" fill="#2196f3">
-                  Voltage
-                </text>
-                <text x="10" y="45" fontSize="10" fill="#4caf50">
-                  Capacity
-                </text>
-                <text x="150" y="195" fontSize="10" fill="#666" textAnchor="middle">
-                  Flight Time (min)
-                </text>
-              </svg>
-            </div>
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
+              data={analysis.flightSimulation.dischargeData}
+              margin={{ top: 20, right: 40, left: 60, bottom: 30 }}  // Increase left margin
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="time"
+                label={{
+                  value: "Flight Time (Hours)",
+                  position: "insideBottom",
+                  offset: -5,
+                }}
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis
+                yAxisId="left"
+                label={{
+                  value: "Voltage (V)",
+                  angle: -90,
+                  position: "insideLeft", // Retain insideLeft, but ensure sufficient margin
+                  offset: -10, // Slightly to the left, avoiding being too close to the axis
+                }}
+                tick={{ fontSize: 12 }}
+                domain={["auto", "auto"]}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                label={{
+                  value: "Capacity (mAh)",
+                  angle: 90,
+                  position: "insideRight",
+                  offset: -5,
+                }}
+                tick={{ fontSize: 12 }}
+                domain={["auto", "auto"]}
+              />
+              <Tooltip />
+              <Legend verticalAlign="top" height={36} />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="voltage"
+                stroke="#2196f3"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+                name="Battery Voltage (V)"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="remainingCapacity"
+                stroke="#f44336"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+                name="Remaining Capacity (mAh)"
+              />
+            </LineChart>
+          </ResponsiveContainer>
 
           {/* Validation Messages */}
           {analysis.errors.length > 0 && (

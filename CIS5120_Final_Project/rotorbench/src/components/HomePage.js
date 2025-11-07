@@ -5,6 +5,7 @@ import "../styles/home.css";
 import logo from "../assets/logo.png";
 import BabylonViewer from "./BabylonViewer";
 import componentsData from "../data/components.json";
+import TwoDViewer from "./TwoDViewer";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,7 +25,8 @@ export default function HomePage() {
 
   const hasBuild = currentBuild && motor && propeller && battery;
   const hasAnalysis = analysisResults && hasBuild;
-  
+  const [activeView, setActiveView] = useState("3D");
+
   return (
     <div className={`app-container${menuOpen ? " menu-open" : ""}`}>
 
@@ -40,43 +42,113 @@ export default function HomePage() {
       </div>
 
       {/* View Switch */}
-      <div className="view-switch">
-        <button className="switch-btn">Detailed View</button>
-        <button className="switch-btn">3D View</button>
+      <div className="view-switch-container">
+        <div className="view-switch-track">
+          <div
+            className="view-switch-slider"
+            style={{
+              transform: activeView === "3D" ? "translateX(0%)" : "translateX(100%)",
+            }}
+          />
+          {["3D", "2D"].map((view) => (
+            <button
+              key={view}
+              className={`view-switch-option ${activeView === view ? "active" : ""}`}
+              onClick={() => setActiveView(view)}
+            >
+              {view} View
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 3D viewer */}
-      <BabylonViewer />
+      <div className="viewer-container">
+        {activeView === "3D" && <BabylonViewer />}
+        {activeView === "2D" && <TwoDViewer />}
+      </div>
 
       {/* Spec Section - Shows saved build or placeholder */}
-      <div className="spec-section">
-        <div className="spec-left">
-          <div className="spec-card">
-            <div className="component-icon motor-icon" style={{width: "32px", height: "32px", fontSize: "20px"}}>⚙️</div>
+      {/* Spec Section - Logically Grouped and Clear */}
+      <div className="spec-section-grouped">
+
+        {/* Overall Section */}
+        <div className="spec-card-group">
+          <div className="spec-header">
+            <div className="spec-icon overall-icon">⚖️</div>
+            <div>
+              <div className="spec-title">Overall</div>
+              <div className="spec-value">System Summary</div>
+            </div>
+          </div>
+
+          <div className="spec-divider"></div>
+          <div className="spec-info">
+            <span>Total Weight</span>
+            <b>{hasAnalysis ? `${analysisResults.performance.totalWeight}g` : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>T/W Ratio</span>
+            <b>{hasAnalysis ? `${analysisResults.performance.thrustToWeightRatio}:1` : "--"}</b>
+          </div>
+        </div>
+
+        {/* Motors */}
+        <div className="spec-card-group">
+          <div className="spec-header">
+            <div className="spec-icon motor-icon">⚙️</div>
             <div>
               <div className="spec-title">Motors</div>
               <div className="spec-value">{motor?.name || "Not selected"}</div>
             </div>
           </div>
+        </div>
 
-          <div className="spec-card">
-            <div className="component-icon propeller-icon" style={{width: "32px", height: "32px", fontSize: "20px"}}>🔄</div>
+        {/* Propellers */}
+        <div className="spec-card-group">
+          <div className="spec-header">
+            <div className="spec-icon propeller-icon">🔄</div>
             <div>
               <div className="spec-title">Propellers</div>
               <div className="spec-value">{propeller?.name || "Not selected"}</div>
             </div>
           </div>
+        </div>
 
-          <div className="spec-card">
-            <div className="component-icon battery-icon" style={{width: "32px", height: "32px", fontSize: "20px"}}>🔋</div>
+        {/* Battery */}
+        <div className="spec-card-group">
+          <div className="spec-header">
+            <div className="spec-icon battery-icon">🔋</div>
             <div>
               <div className="spec-title">Battery</div>
               <div className="spec-value">{battery?.name || "Not selected"}</div>
             </div>
           </div>
 
-          <div className="spec-card">
-            <div className="component-icon fc-icon" style={{width: "32px", height: "32px", fontSize: "20px"}}>🖥️</div>
+          <div className="spec-divider"></div>
+
+          <div className="spec-info">
+            <span>Voltage</span>
+            <b>{battery ? `${battery.voltage}V` : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>Capacity</span>
+            <b>{battery ? `${battery.capacity}mAh` : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>Current Draw</span>
+            <b>{hasAnalysis ? `${analysisResults.flightSimulation.avgCurrentDraw}A` : "--"}</b>
+          </div>
+          <div className="spec-info">
+            <span>Flight Time</span>
+            <b>{hasAnalysis ? `${analysisResults.flightSimulation.estimatedFlightTime}min` : "--"}</b>
+          </div>
+        </div>
+
+        {/* Flight Controller */}
+        <div className="spec-card-group">
+          <div className="spec-header">
+            <div className="spec-icon fc-icon">🖥️</div>
             <div>
               <div className="spec-title">Flight Controller</div>
               <div className="spec-value">{fc?.name || "Not selected"}</div>
@@ -84,32 +156,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="spec-right">
-          <div className="spec-info">
-            <span>Total Weight</span>
-            <b>{hasAnalysis ? analysisResults.performance.totalWeight + "g" : "--"}</b>
-          </div>
-          <div className="spec-info">
-            <span>T/W Ratio</span>
-            <b>{hasAnalysis ? analysisResults.performance.thrustToWeightRatio + ":1" : "--"}</b>
-          </div>
-          <div className="spec-info">
-            <span>Battery Voltage</span>
-            <b>{battery ? battery.voltage + "V" : "--"}</b>
-          </div>
-          <div className="spec-info">
-            <span>Battery Capacity</span>
-            <b>{battery ? battery.capacity + "mAh" : "--"}</b>
-          </div>
-          <div className="spec-info">
-            <span>Current Draw</span>
-            <b>{hasAnalysis ? analysisResults.flightSimulation.avgCurrentDraw + "A" : "--"}</b>
-          </div>
-          <div className="spec-info">
-            <span>Flight Time</span>
-            <b>{hasAnalysis ? analysisResults.flightSimulation.estimatedFlightTime + "min" : "--"}</b>
-          </div>
-        </div>
       </div>
 
       {/* Bottom Buttons */}
@@ -117,8 +163,8 @@ export default function HomePage() {
         <button className="action-btn save" onClick={() => navigate("/build")}>
           {hasBuild ? "✏️ Edit Build" : "🔍 New Build"}
         </button>
-        <button 
-          className="action-btn analysis" 
+        <button
+          className="action-btn analysis"
           disabled={!hasBuild}
           onClick={() => navigate("/analysis", { state: { build: currentBuild } })}
           style={{ opacity: hasBuild ? 1 : 0.5, cursor: hasBuild ? "pointer" : "not-allowed" }}
