@@ -1,0 +1,51 @@
+.profile-identity {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.avatar-preview {
+  margin-top: 10px;
+}
+.avatar-preview img {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.pref-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.pref-card {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.pref-icon {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
+.pref-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.pref-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+@media (max-width: 360px) {
+  .pref-grid { grid-template-columns: 1fr; }
+}

@@ -28,6 +28,10 @@ from utils.component_data import (
     delete_build
 )
 from utils.build_analysis import analyze_build
+from models.user import UserProfile
+from utils.user_data import list_users, get_user, save_user, delete_user
+
+from datetime import datetime
 
 app = FastAPI(title="RotorBench API", version="1.0.0")
 
@@ -205,6 +209,45 @@ async def analyze_saved_build(build_id: str):
     
     return analyze_build(hydrated)
 
+@app.get("/api/users", response_model=List[UserProfile])
+async def api_list_users():
+    return list_users()
+
+@app.get("/api/users/{user_id}", response_model=UserProfile)
+async def api_get_user(user_id: str):
+    user = get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.post("/api/users", response_model=UserProfile)
+async def api_create_user(profile: UserProfile):
+    if profile.created_at is None:
+        profile.created_at = datetime.utcnow()
+    profile.updated_at = datetime.utcnow()
+    if not save_user(profile):
+        raise HTTPException(status_code=500, detail="Failed to save user")
+    return profile
+
+@app.put("/api/users/{user_id}", response_model=UserProfile)
+async def api_update_user(user_id: str, profile: UserProfile):
+    if user_id != profile.id:
+        raise HTTPException(status_code=400, detail="User ID mismatch")
+
+    if profile.created_at is None:
+        profile.created_at = datetime.utcnow()
+    profile.updated_at = datetime.utcnow()
+
+    if not save_user(profile):
+        raise HTTPException(status_code=500, detail="Failed to update user")
+    return profile
+
+
+@app.delete("/api/users/{user_id}")
+async def api_delete_user(user_id: str):
+    if not delete_user(user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User deleted successfully"}
 
 if __name__ == "__main__":
     # boot up api server

@@ -4,6 +4,7 @@ import { BuildProvider } from "./context/BuildContext";
 import HomePage from "./components/HomePage";
 import BuildPage from "./components/BuildPage";
 import AnalysisPage from "./components/AnalysisPage";
+import UserProfilePage from "./components/UserProfilePage";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/build" element={<BuildPage />} />
           <Route path="/analysis" element={<AnalysisPage />} />
+          <Route path="/profile" element={<UserProfilePage />} />
         </Routes>
       </Router>
     </BuildProvider>

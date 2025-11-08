@@ -53,7 +53,7 @@ export default function BuildPage() {
 
     // Save to context
     updateBuild(build);
-    
+
     // Navigate back to home
     navigate("/");
   };
@@ -304,7 +304,12 @@ export default function BuildPage() {
               Home
             </button>
             <button className="menu-item">Saved Builds</button>
-            <button className="menu-item">Profile</button>
+            <button
+              className="menu-item"
+              onClick={() => { setMenuOpen(false); navigate("/profile", { state: { userId: "leo" } }); }}
+            >
+              Profile
+            </button>
             <button className="menu-item">Documentation</button>
           </div>
           <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
