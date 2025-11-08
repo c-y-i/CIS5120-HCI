@@ -7,6 +7,34 @@
     "avatarUrl": null,
     "preferences": {},
     "createdAt": "2025-11-07T21:00:00+00:00",
-    "updatedAt": "2025-11-08T03:22:19.580669"
+    "updatedAt": "2025-11-08T06:31:58.649759"
+  },
+  {
+    "id": "d317f466-cc42-41be-b1dd-05e3eea7fb43",
+    "email": "zhyizhou@upenn.edu",
+    "displayName": "User_A325",
+    "githubUsername": "yz-lil",
+    "avatarUrl": null,
+    "preferences": {
+      "theme": "system",
+      "notifications": "enabled",
+      "language": "en-US"
+    },
+    "createdAt": "2025-11-08T06:37:01.769532",
+    "updatedAt": "2025-11-08T06:54:12.710227"
+  },
+  {
+    "id": "311a856d-1875-4a5a-813d-904619a97a3e",
+    "email": "yizhou@upenn.edu",
+    "displayName": "User_0BKX",
+    "githubUsername": "",
+    "avatarUrl": null,
+    "preferences": {
+      "theme": "system",
+      "notifications": "enabled",
+      "language": "en-US"
+    },
+    "createdAt": "2025-11-08T06:53:29.485302",
+    "updatedAt": "2025-11-08T06:53:29.485302"
   }
 ]

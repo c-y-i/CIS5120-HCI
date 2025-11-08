@@ -239,14 +239,36 @@ async def api_get_user(user_id: str):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@app.post("/api/users", response_model=UserProfile)
-async def api_create_user(profile: UserProfile):
-    if profile.created_at is None:
-        profile.created_at = datetime.utcnow()
-    profile.updated_at = datetime.utcnow()
+import uuid
+
+@app.post("/api/users")
+async def api_create_or_login_user(profile: UserProfile):
+    if not profile.email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    users = list_users()
+    now = datetime.utcnow()
+
+    existing_user = next((u for u in users if u.email == profile.email), None)
+    if existing_user:
+        existing_user.updated_at = now
+        save_user(existing_user)
+        return {"user": existing_user, "isNew": False}  # Add a badge
+
+    # New registration
+    if not profile.display_name or profile.display_name.strip() == "":
+        import random, string
+        random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        profile.display_name = f"User_{random_suffix}"
+
+    profile.id = str(uuid.uuid4())
+    profile.created_at = now
+    profile.updated_at = now
+
     if not save_user(profile):
         raise HTTPException(status_code=500, detail="Failed to save user")
-    return profile
+
+    return {"user": profile, "isNew": True}
 
 @app.put("/api/users/{user_id}", response_model=UserProfile)
 async def api_update_user(user_id: str, profile: UserProfile):

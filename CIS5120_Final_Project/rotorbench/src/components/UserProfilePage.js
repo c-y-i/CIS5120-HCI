@@ -15,26 +15,49 @@ export default function UserProfilePage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Pass userId via route state or default to "leo"
-    const userId = location.state?.userId || "leo";
+    // Pass userId via route state or default
+    const userId = localStorage.getItem("userId") || null;
     const ghAvatar = (u) => (u ? `https://github.com/${u}.png` : "");
+    const [message, setMessage] = useState({ type: "", text: "" });
 
     useEffect(() => {
         (async () => {
+            const storedId = localStorage.getItem("userId");
+            if (!storedId) {
+                // Not logged in => Register as a new user
+                setUser({
+                    displayName: "",
+                    email: "",
+                    githubUsername: "",
+                    preferences: { theme: "system", notifications: "enabled", language: "en-US" },
+                });
+                setEdit(true);
+                setLoading(false);
+                return;
+            }
+
+            // Logged in => Retrieve backend user information
             setLoading(true);
-            setError(null);
             try {
-                const res = await fetch(`http://localhost:8000/api/users/${userId}`);
-                if (!res.ok) throw new Error((await res.json()).detail || "Failed to load profile");
+                const res = await fetch(`http://localhost:8000/api/users/${storedId}`);
+                if (!res.ok) throw new Error("User not found, please re-register.");
                 const data = await res.json();
                 setUser(data);
             } catch (e) {
+                localStorage.removeItem("userId");
                 setError(e.message);
+                setUser({
+                    displayName: "",
+                    email: "",
+                    githubUsername: "",
+                    preferences: { theme: "system", notifications: "enabled", language: "en-US" },
+                });
+                setEdit(true);
             } finally {
                 setLoading(false);
             }
         })();
-    }, [userId]);
+    }, []);
 
     const onChange = (path, value) => {
         setUser(prev => {
@@ -53,23 +76,67 @@ export default function UserProfilePage() {
         if (!user) return;
         setSaving(true);
         setError(null);
+        setMessage({ type: "", text: "" });
+
+        // Step 1: Input validation
+        if (!user.email || user.email.trim() === "") {
+            setSaving(false);
+            setMessage({ type: "error", text: "Please enter your email address to register." });
+            return;
+        }
+
         try {
-            // PUT full profile (keeps schema simple)
-            const res = await fetch(`http://localhost:8000/api/users/${user.id}`, {
-                method: "PUT",
+            const isNew = !user.id; // Determine whether an ID already exists
+            const url = isNew
+                ? "http://localhost:8000/api/users"                // New registration
+                : `http://localhost:8000/api/users/${user.id}`;    // Already exists -> Update
+
+            const method = isNew ? "POST" : "PUT";
+
+            const response = await fetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(user),
             });
-            if (!res.ok) throw new Error((await res.json()).detail || "Save failed");
-            const saved = await res.json();
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || "Save failed");
+            }
+
+            const result = await response.json();
+            const saved = result.user || result;
             setUser(saved);
+            localStorage.setItem("userId", saved.id);
+
+            if (result.isNew === false) {
+                setMessage({
+                    type: "success",
+                    text: `👋 Welcome back, ${saved.displayName || "User"}!`,
+                });
+            } else if (result.isNew === true) {
+                setMessage({
+                    type: "success",
+                    text: "🎉 Registration successful! Let's get started.",
+                });
+            } else {
+                // Fallback for PUT or updates
+                setMessage({
+                    type: "success",
+                    text: "💾 Profile updated successfully!",
+                });
+            }
+
             setEdit(false);
         } catch (e) {
             setError(e.message);
+            setMessage({ type: "error", text: e.message });
         } finally {
             setSaving(false);
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
         }
     };
+
 
     return (
         <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
@@ -85,8 +152,13 @@ export default function UserProfilePage() {
 
             {/* Page Title */}
             <div className="page-header">
-                <h2 className="page-title">Profile</h2>
+                <h2 className="page-title">{user?.id ? "Profile" : "Create Your Profile"}</h2>
             </div>
+            {message.text && (
+                <div className={`message-bar ${message.type}`}>
+                    {message.text}
+                </div>
+            )}
 
             {/* Loading */}
             {loading && (
@@ -131,17 +203,30 @@ export default function UserProfilePage() {
                         <div className="metric-icon">✉️</div>
                         <div className="metric-content">
                             <div className="metric-label">Email</div>
-                            {!edit ? (
-                                <div className="metric-value">{user.email}</div>
+
+                            {/* Added conditional rendering logic */}
+                            {user.id ? (
+                                <>
+                                    <div className="metric-value">{user.email || "—"}</div>
+                                    <div className="metric-subtitle">
+                                        Email is your unique account identifier.
+                                        <br />
+                                        To change it, please <b>log out</b> and re-register.
+                                    </div>
+                                </>
                             ) : (
-                                <input
-                                    className="input-field"
-                                    value={user.email || ""}
-                                    onChange={(e) => onChange("email", e.target.value)}
-                                    placeholder="name@example.com"
-                                />
+                                <>
+                                    <input
+                                        className="input-field"
+                                        value={user.email || ""}
+                                        onChange={(e) => onChange("email", e.target.value)}
+                                        placeholder="name@example.com"
+                                    />
+                                    <div className="metric-subtitle">
+                                        Please enter your email to register.
+                                    </div>
+                                </>
                             )}
-                            <div className="metric-subtitle">Used for notifications and orders</div>
                         </div>
                     </div>
 
@@ -248,23 +333,33 @@ export default function UserProfilePage() {
             )}
 
             {/* Bottom Buttons */}
-            {!loading && (
-                <div className="bottom-buttons">
-                    {!edit ? (
-                        <>
-                            <button className="action-btn save" onClick={() => setEdit(true)}>✏️ Edit</button>
-                            <button className="action-btn order" onClick={() => navigate(-1)}>← Back</button>
-                        </>
-                    ) : (
-                        <>
-                            <button className="action-btn save" onClick={saveProfile} disabled={saving}>
-                                {saving ? "Saving…" : "💾 Save"}
-                            </button>
-                            <button className="action-btn order" onClick={() => setEdit(false)}>Cancel</button>
-                        </>
-                    )}
-                </div>
-            )}
+            <div className="bottom-buttons">
+                {!edit ? (
+                    <>
+                        <button className="action-btn save" onClick={() => setEdit(true)}>✏️ Edit</button>
+                        <button className="action-btn order" onClick={() => navigate(-1)}>← Back</button>
+                    </>
+                ) : (
+                    <>
+                        <button className="action-btn save" onClick={saveProfile} disabled={saving}>
+                            {saving ? "Saving…" : user?.id ? "💾 Save" : "🆕 Register"}
+                        </button>
+                        <button className="action-btn order" onClick={() => setEdit(false)}>Cancel</button>
+                    </>
+                )}
+                {!edit && (
+                    <button
+                        className="action-btn order"
+                        style={{ background: "#999" }}
+                        onClick={() => {
+                            localStorage.removeItem("userId"); // Clear login status
+                            navigate(0); // Refresh the page to re-enter registration mode.
+                        }}
+                    >
+                        🚪 Logout
+                    </button>
+                )}
+            </div>
 
             {/* Menu Drawer */}
             {menuOpen && (
