@@ -359,7 +359,6 @@ export default function BuildPage() {
             >
               Profile
             </button>
-            <button className="menu-item">Documentation</button>
           </div>
           <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
         </div>

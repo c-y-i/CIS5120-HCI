@@ -404,8 +404,9 @@ export default function UserProfilePage() {
                         </div>
                         <button className="menu-item" onClick={() => navigate("/build")}>Build Configuration</button>
                         <button className="menu-item" onClick={() => navigate("/analysis", { state: { build: null } })}>Analysis</button>
-                        <button className="menu-item" onClick={() => navigate("/profile", { state: { userId } })}>Profile</button>
-                        <button className="menu-item">Documentation</button>
+                        <button className="menu-item" onClick={() => navigate("/saved", { state: { userId } })}>
+                            Saved Configurations
+                        </button>
                     </div>
                     <div className="menu-backdrop" />
                 </div>
