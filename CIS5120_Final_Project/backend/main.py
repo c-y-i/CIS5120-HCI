@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from typing import Optional
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 import uvicorn
 
 from models.components import (
@@ -52,7 +53,21 @@ class Build(BaseModel):
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
-app = FastAPI(title="RotorBench API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("\n" + "="*60)
+    print("RotorBench Backend Server Starting")
+    print("="*60)
+    print("API Server: http://localhost:8000")
+    print("API Docs: http://localhost:8000/docs")
+    print("CORS Enabled for: http://localhost:3000")
+    print("="*60 + "\n")
+    yield
+    # Shutdown (if needed)
+    print("\nRotorBench Backend Server Shutting Down")
+
+app = FastAPI(title="RotorBench API", version="1.0.0", lifespan=lifespan)
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -62,6 +77,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    print(f"{request.method} {request.url.path}")
+    response = await call_next(request)
+    print(f"  -> {response.status_code}")
+    return response
 
 @app.get("/")
 async def root():
@@ -203,7 +226,28 @@ async def analyze_drone_build(build: DroneBuild):
     Returns performance metrics, flight simulation, and validation results.
     Accepts a full DroneBuild object with complete component data.
     """
-    return analyze_build(build)
+    print(f"\nAnalyzing build: {build.name} (ID: {build.id})")
+    
+    if build.components:
+        print(f"  Frame: {build.components.frame.name if build.components.frame else 'None'}")
+        print(f"  Motors: {build.components.motors.name if build.components.motors else 'None'}")
+        print(f"  Propellers: {build.components.propellers.name if build.components.propellers else 'None'}")
+        print(f"  Battery: {build.components.battery.name if build.components.battery else 'None'} "
+              f"({build.components.battery.capacity if build.components.battery else 0}mAh)")
+        print(f"  ESC: {build.components.esc.name if build.components.esc else 'None'}")
+        print(f"  FC: {build.components.flight_controller.name if build.components.flight_controller else 'None'}")
+    
+    analysis = analyze_build(build)
+    
+    print(f"Analysis complete:")
+    print(f"  Flight Time: {analysis.flight_simulation.estimated_flight_time} min")
+    print(f"  Current Draw: {analysis.flight_simulation.avg_current_draw}A")
+    print(f"  Discharge Points: {len(analysis.flight_simulation.discharge_data)}")
+    print(f"  Valid: {analysis.is_valid}")
+    if analysis.errors:
+        print(f"  Errors: {analysis.errors}")
+    
+    return analysis
 
 
 @app.post("/api/builds/{build_id}/analyze", response_model=BuildAnalysis)

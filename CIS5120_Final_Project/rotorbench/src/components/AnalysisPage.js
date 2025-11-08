@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useBuild } from "../context/BuildContext";
 import "../styles/home.css";
@@ -25,14 +25,55 @@ export default function AnalysisPage() {
   const location = useLocation();
   const { updateAnalysis } = useBuild();
   const build = location.state?.build;
+  const hasAnalyzed = useRef(false);
 
-  useEffect(() => {
-    if (build) {
-      analyzeBuild();
-    }
-  }, [build]);
+  const hydrateBuild = useCallback((buildConfig) => {
+    const getComponentById = (type, id) => {
+      if (!id) return null;
+      const components = componentsData[type];
+      return components?.find((c) => c.id === id) || null;
+    };
 
-  const analyzeBuild = async () => {
+    // Get components
+    const frame = getComponentById("frames", buildConfig.componentIds.frameId);
+    const motors = getComponentById("motors", buildConfig.componentIds.motorId);
+    const propellers = getComponentById("propellers", buildConfig.componentIds.propellerId);
+    const esc = getComponentById("escs", buildConfig.componentIds.escId);
+    const flightController = getComponentById("flight_controllers", buildConfig.componentIds.flightControllerId);
+    const battery = getComponentById("batteries", buildConfig.componentIds.batteryId);
+    const receiver = getComponentById("receivers", buildConfig.componentIds.receiverId);
+
+    // Log for debugging
+    console.log("Build config IDs:", buildConfig.componentIds);
+    console.log("Hydrated components:", {
+      frame: frame ? "✓ " + frame.name : "✗ null",
+      motors: motors ? "✓ " + motors.name : "✗ null",
+      propellers: propellers ? "✓ " + propellers.name : "✗ null",
+      esc: esc ? "✓ " + esc.name : "✗ null",
+      flightController: flightController ? "✓ " + flightController.name : "✗ null",
+      battery: battery ? "✓ " + battery.name : "✗ null",
+      receiver: receiver ? "✓ " + receiver.name : "✗ null",
+    });
+
+    return {
+      id: buildConfig.id,
+      name: buildConfig.name,
+      description: buildConfig.description || "",
+      components: {
+        frame: frame,
+        motors: motors,
+        propellers: propellers,
+        esc: esc,
+        flightController: flightController,
+        battery: battery,
+        receiver: receiver,
+      },
+      createdAt: buildConfig.createdAt || new Date().toISOString(),
+      updatedAt: buildConfig.updatedAt || new Date().toISOString(),
+    };
+  }, []);
+
+  const analyzeBuild = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -74,59 +115,22 @@ export default function AnalysisPage() {
       setAnalysis(analysisData);
       // Save to context so HomePage can display it
       updateAnalysis(analysisData);
+      hasAnalyzed.current = true;
     } catch (err) {
       setError(err.message);
       console.error("Analysis error:", err);
+      hasAnalyzed.current = true;
     } finally {
       setLoading(false);
     }
-  };
+  }, [build, hydrateBuild, updateAnalysis]);
 
-  const hydrateBuild = (buildConfig) => {
-    const getComponentById = (type, id) => {
-      if (!id) return null;
-      const components = componentsData[type];
-      return components?.find((c) => c.id === id) || null;
-    };
-
-    // Get components
-    const frame = getComponentById("frames", buildConfig.componentIds.frameId);
-    const motors = getComponentById("motors", buildConfig.componentIds.motorId);
-    const propellers = getComponentById("propellers", buildConfig.componentIds.propellerId);
-    const esc = getComponentById("escs", buildConfig.componentIds.escId);
-    const flightController = getComponentById("flight_controllers", buildConfig.componentIds.flightControllerId);
-    const battery = getComponentById("batteries", buildConfig.componentIds.batteryId);
-    const receiver = getComponentById("receivers", buildConfig.componentIds.receiverId);
-
-    // Log for debugging
-    console.log("Build config IDs:", buildConfig.componentIds);
-    console.log("Hydrated components:", {
-      frame: frame ? "✓ " + frame.name : "✗ null",
-      motors: motors ? "✓ " + motors.name : "✗ null",
-      propellers: propellers ? "✓ " + propellers.name : "✗ null",
-      esc: esc ? "✓ " + esc.name : "✗ null",
-      flightController: flightController ? "✓ " + flightController.name : "✗ null",
-      battery: battery ? "✓ " + battery.name : "✗ null",
-      receiver: receiver ? "✓ " + receiver.name : "✗ null",
-    });
-
-    return {
-      id: buildConfig.id,
-      name: buildConfig.name,
-      description: buildConfig.description || "",
-      components: {
-        frame: frame,
-        motors: motors,
-        propellers: propellers,
-        esc: esc,
-        flightController: flightController, // Use camelCase - Pydantic will convert
-        battery: battery,
-        receiver: receiver,
-      },
-      createdAt: buildConfig.createdAt || new Date().toISOString(),
-      updatedAt: buildConfig.updatedAt || new Date().toISOString(),
-    };
-  };
+  useEffect(() => {
+    // Only analyze once when the component mounts with a build
+    if (build && !hasAnalyzed.current) {
+      analyzeBuild();
+    }
+  }, [build, analyzeBuild]);
 
   const getRatingColor = (rating) => {
     switch (rating) {
@@ -374,11 +378,12 @@ export default function AnalysisPage() {
               <XAxis
                 dataKey="time"
                 label={{
-                  value: "Flight Time (Hours)",
+                  value: "Flight Time (Minutes)",
                   position: "insideBottom",
                   offset: -5,
                 }}
                 tick={{ fontSize: 12 }}
+                tickFormatter={(value) => (value * 60).toFixed(1)}
               />
               <YAxis
                 yAxisId="left"
@@ -403,7 +408,9 @@ export default function AnalysisPage() {
                 tick={{ fontSize: 12 }}
                 domain={["auto", "auto"]}
               />
-              <Tooltip />
+              <Tooltip 
+                labelFormatter={(value) => `Time: ${(value * 60).toFixed(1)} min`}
+              />
               <Legend verticalAlign="top" height={36} />
               <Line
                 yAxisId="left"

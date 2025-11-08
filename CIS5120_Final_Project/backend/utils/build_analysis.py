@@ -112,12 +112,19 @@ def calculate_max_thrust(build: DroneBuild) -> float:
 def calculate_current_at_throttle(motor, throttle: float) -> float:
     """
     Calculate current draw for a motor at given throttle
-    Current scales with throttle^1.8 (empirical, accounts for prop loading)
     """
     if not motor:
         return 0.0
     
-    return motor.max_current * (throttle ** 1.8)
+    # More realistic model:
+    # - Typical cruise current is 25-35% of max_current
+    # - Current scales with throttle^2 (power is proportional to RPM^3, but efficiency improves)
+    # - Use a base multiplier of 0.3 to get realistic cruise currents
+    
+    base_current_ratio = 0.3  # At 50% throttle, motor draws ~30% of max current
+    current = motor.max_current * base_current_ratio * (throttle ** 1.5)
+    
+    return current
 
 
 def calculate_power_draw(build: DroneBuild, throttle_percentage: float = 0.5) -> float:
@@ -320,27 +327,54 @@ def generate_discharge_curve(
     flight_time_minutes: float,
     avg_current: float
 ) -> List[DischargeDataPoint]:
-    """Generate battery discharge curve data"""
+    """
+    Generate battery discharge curve data
+    Creates a detailed discharge profile with multiple data points for visualization
+    """
     if not build.components.battery:
         return []
     
     battery = build.components.battery
     discharge_profile = battery.discharge_profile
     
-    # Generate data points every 0.5 minutes
+    # Generate more data points for better visualization
+    # Use adaptive time step: smaller step for shorter flights, larger for longer
+    if flight_time_minutes < 3:
+        time_step = 0.2  # 12 second intervals for very short flights
+    elif flight_time_minutes < 10:
+        time_step = 0.3  # 18 second intervals for short flights  
+    else:
+        time_step = 0.5  # 30 second intervals for longer flights
+    
+    # Always generate at least 20 points for smooth curves
+    min_points = 20
+    if (flight_time_minutes / time_step) < min_points:
+        time_step = flight_time_minutes / min_points
+    
     data_points = []
-    time_step = 0.5
-    num_points = int(flight_time_minutes / time_step) + 1
+    
+    # Calculate usable capacity (80% for safety)
+    usable_capacity_mah = battery.capacity * 0.8
+    usable_flight_time = (usable_capacity_mah / (avg_current * 1000)) * 60  # minutes
+    
+    # Generate points up to 20% remaining (80% discharged)
+    num_points = int(usable_flight_time / time_step) + 1
+    num_points = max(num_points, min_points)  # Ensure minimum points
     
     for i in range(num_points):
         time = i * time_step
+        
+        # Don't exceed the usable flight time
+        if time > usable_flight_time:
+            break
         
         # Calculate remaining capacity
         discharged_mah = avg_current * 1000 * (time / 60.0)
         remaining_capacity = battery.capacity - discharged_mah
         remaining_percentage = (remaining_capacity / battery.capacity) * 100
         
-        if remaining_percentage < 20:  # Stop at 20% (safety limit)
+        # Stop if we've reached the safety limit (20%)
+        if remaining_percentage < 20:
             break
         
         # Interpolate voltage from discharge profile
@@ -352,10 +386,20 @@ def generate_discharge_curve(
         adjusted_current = avg_current * (nominal_voltage / voltage) if voltage > 0 else avg_current
         
         data_points.append(DischargeDataPoint(
-            time=round(time, 1),
+            time=round(time / 60, 3),  # Convert to hours for X-axis
             voltage=round(voltage, 2),
             remaining_capacity=round(remaining_capacity, 1),
             current_draw=round(adjusted_current, 2)
+        ))
+    
+    # Ensure we have at least some data points even for edge cases
+    if len(data_points) == 0 and battery.capacity > 0:
+        # Add just the starting point
+        data_points.append(DischargeDataPoint(
+            time=0.0,
+            voltage=round(interpolate_voltage(discharge_profile, 100), 2),
+            remaining_capacity=round(battery.capacity, 1),
+            current_draw=round(avg_current, 2)
         ))
     
     return data_points
