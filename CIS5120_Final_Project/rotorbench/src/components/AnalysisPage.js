@@ -390,11 +390,11 @@ export default function AnalysisPage() {
                 label={{
                   value: "Voltage (V)",
                   angle: -90,
-                  position: "insideLeft", // Retain insideLeft, but ensure sufficient margin
-                  offset: -10, // Slightly to the left, avoiding being too close to the axis
+                  position: "insideLeft",
+                  offset: -10,
                 }}
                 tick={{ fontSize: 12 }}
-                domain={["auto", "auto"]}
+                domain={["dataMin - 0.5", "dataMax + 0.5"]}
               />
               <YAxis
                 yAxisId="right"
@@ -406,7 +406,7 @@ export default function AnalysisPage() {
                   offset: -5,
                 }}
                 tick={{ fontSize: 12 }}
-                domain={["auto", "auto"]}
+                domain={[0, "dataMax + 100"]}
               />
               <Tooltip 
                 labelFormatter={(value) => `Time: ${(value * 60).toFixed(1)} min`}
