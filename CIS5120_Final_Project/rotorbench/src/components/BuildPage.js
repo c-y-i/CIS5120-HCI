@@ -18,6 +18,7 @@ export default function BuildPage() {
 
   const location = useLocation();
   const userId = localStorage.getItem("userId");
+  const [message, setMessage] = useState({ type: "", text: "" });
 
   const totalWeight = 0;
 
@@ -69,8 +70,16 @@ export default function BuildPage() {
       const localBuilds = JSON.parse(localStorage.getItem("offlineBuilds") || "[]");
       localBuilds.push(payload);
       localStorage.setItem("offlineBuilds", JSON.stringify(localBuilds));
-      alert("✅ Build saved locally. Log in later to sync your builds!");
-      navigate("/");
+      setMessage({
+        type: "success",
+        text: "✅ Build saved locally. Log in later to sync your builds!",
+      });
+
+      setTimeout(() => {
+        setMessage({ type: "", text: "" });
+        navigate("/"); // navigate after 3 seconds
+      }, 3000);
+
       return;
     }
 
@@ -118,6 +127,11 @@ export default function BuildPage() {
 
   return (
     <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
+      {message.text && (
+        <div className={`message-bar ${message.type}`}>
+          {message.text}
+        </div>
+      )}
       {/* Top Bar */}
       <div className="top-bar">
         <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)}>
