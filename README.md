@@ -1,60 +1,109 @@
-# CIS 5120 Project
-## RotorBench
+# RotorBench
 
-## TODOs:
-- Front-end & UI design
-- Back-end & data structure
-- Component data
-- Build analysis required math
-- Rendering
+**MultiRotor WorkBench - A drone build configurator and analysis tool**
 
-# Project Structure
+RotorBench helps FPV drone enthusiasts design, analyze, and optimize their drone builds with real-time performance calculations, component compatibility checking, and detailed flight time simulations.
 
-## Frontend
+## Prerequisites
 
-The frontend handles user interaction, visualization, and build configuration.
+- **Python 3.8+** (for backend)
+- **Node.js 14+** (for frontend)
+- **npm or yarn** (package manager)
 
-### Modules
-- **Component Search**  
-  Browse and filter through available components.
+## Installation
 
-- **Home / View**  
-  Main interface — includes *Analysis*, *Overview*, and related pages.
+### 1. Clone the Repository
 
-- **Rendering**  
-  Utilizes **Babylon.js**, **Three.js**, or similar libraries for real-time 3D visualization.
+```bash
+git clone https://github.com/your-username/CIS5120-HCI.git
+cd CIS5120-HCI/CIS5120_Final_Project
+```
 
-- **Build**  
-  Handles component *compatibility*, data organization, and user build states.
+### 2. Backend Setup
 
-- **Analysis / Simulation**  
-  Provides performance estimation, compatibility checks, and simulation views.
+```bash
+cd backend
 
----
+# Create a virtual environment (recommended)
+python -m venv venv
 
-## Backend
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
 
-The backend supports computation, data management, and build analysis through FastAPI or Flask.
+# Install dependencies
+pip install -r requirements.txt
+```
 
-### Modules
-- **FastAPI or Flask**  
-  Core backend framework providing RESTful API endpoints.
+### 3. Frontend Setup
 
-- **3D Model Data**  
-  Handles `.obj` and related 3D model formats.
+```bash
+cd ../rotorbench
 
-- **Build Analysis**  
-  Processes build configurations and computes key performance metrics.
+# Install dependencies
+npm install
 
-- **Component Data**  
-  Manages component specifications, metadata, and relationships.
+# Or with yarn:
+yarn install
+```
 
-- **URL Shortener**  
-  Generates shareable build/view links.
+## Running the Application
 
-- **User Systems** *(placeholder)*  
-  Future integration for authentication, profiles, and saved builds.
+### Start the Backend Server
 
----
+```bash
+cd CIS5120_Final_Project/backend
 
-> **Note:** Placeholder features are not final, we may or may not implement them, depending on our time and interest.
+# Make sure virtual environment is activated
+# Then start the server:
+python -m uvicorn main:app --reload --port 8000
+```
+
+The backend will start at: **http://localhost:8000**
+- API Docs: **http://localhost:8000/docs**
+
+### Start the Frontend
+
+In a **separate terminal**:
+
+```bash
+cd CIS5120_Final_Project/rotorbench
+
+# Start the development server
+npm start
+```
+
+The frontend will start at: **http://localhost:3000**
+
+## Features
+
+- **Component Selection** - Browse and select from motors, propellers, batteries, ESCs, flight controllers, frames, and receivers
+- **Performance Analysis** - Calculate thrust-to-weight ratio, flight time, hover time, and power consumption
+- **Battery Simulation** - Detailed discharge curves showing voltage and capacity over time
+- **Compatibility Validation** - Automatic checks for voltage, current, and size compatibility
+- **Cost Tracking** - Real-time build cost calculation
+- **User Profiles** - Save and manage multiple drone configurations
+- **Interactive Charts** - Responsive visualizations for battery discharge and performance metrics
+- **Mobile-Friendly** - Works seamlessly on desktop, tablet, and mobile devices
+
+## Tech Stack
+
+**Backend:** FastAPI, Pydantic, Uvicorn
+
+**Frontend:** React, React Router, Recharts, CSS3
+
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+cd CIS5120_Final_Project/backend
+python test_api.py
+```
+
+
+## About
+
+App developed for CIS 5120 (Human-Computer Interaction) at the University of Pennsylvania.

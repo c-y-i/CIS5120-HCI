@@ -1,8 +1,0 @@
-fastapi
-uvicorn
-numpy
-scipy
-pandas
-requests
-tqdm
-python-dotenv
