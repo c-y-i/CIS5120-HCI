@@ -1,9 +1,11 @@
 """
 Main module for the RotorBench backend.
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+from typing import Optional
+from pydantic import BaseModel
 import uvicorn
 
 from models.components import (
@@ -30,8 +32,25 @@ from utils.component_data import (
 from utils.build_analysis import analyze_build
 from models.user import UserProfile
 from utils.user_data import list_users, get_user, save_user, delete_user
+from utils.builds_data import list_builds, get_build, create_build, update_build, delete_build
 
 from datetime import datetime
+
+class Build(BaseModel):
+    id: Optional[str] = None
+    userId: str
+    name: Optional[str] = None
+    note: Optional[str] = None
+    frameId: str
+    motorId: str
+    propellerId: str
+    batteryId: str
+    escId: Optional[str] = None
+    fcId: Optional[str] = None
+    receiverId: Optional[str] = None
+    totalWeight: Optional[float] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
 
 app = FastAPI(title="RotorBench API", version="1.0.0")
 
@@ -248,6 +267,38 @@ async def api_delete_user(user_id: str):
     if not delete_user(user_id):
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "User deleted successfully"}
+
+@app.get("/api/builds")
+def api_list_builds(userId: Optional[str] = Query(None)):
+    return list_builds(userId)
+
+@app.get("/api/builds/{bid}")
+def api_get_build(bid: str):
+    b = get_build(bid)
+    if not b:
+        raise HTTPException(status_code=404, detail="Build not found")
+    return b
+
+@app.post("/api/builds", status_code=201)
+def api_create_build(build: Build):
+    if not build.userId:
+        raise HTTPException(status_code=400, detail="userId is required")
+    return create_build(build.model_dump(exclude_none=True))
+
+@app.put("/api/builds/{bid}")
+def api_put_build(bid: str, build: Build):
+    if build.id and build.id != bid:
+        raise HTTPException(status_code=400, detail="ID mismatch")
+    updated = update_build(bid, build.model_dump(exclude_none=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Build not found")
+    return updated
+
+@app.delete("/api/builds/{bid}")
+def api_delete_build(bid: str):
+    if not delete_build(bid):
+        raise HTTPException(status_code=404, detail="Build not found")
+    return {"ok": True}
 
 if __name__ == "__main__":
     # boot up api server

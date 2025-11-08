@@ -182,7 +182,15 @@ export default function HomePage() {
             <button className="menu-item" onClick={() => navigate("/build")}>
               Build Configuration
             </button>
-            <button className="menu-item">Saved Builds</button>
+            <button
+              className="menu-item"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate("/saved");
+              }}
+            >
+              Saved Builds
+            </button>
             <button
               className="menu-item"
               onClick={() => { setMenuOpen(false); navigate("/profile", { state: { userId: "leo" } }); }}

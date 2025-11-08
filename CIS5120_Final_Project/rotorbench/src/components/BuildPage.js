@@ -1,14 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useBuild } from "../context/BuildContext";
 import "../styles/home.css";
 import logo from "../assets/logo.png";
 import componentsData from "../data/components.json";
 
+const API_BASE =
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE) ||
+  process.env.REACT_APP_API_BASE ||
+  "http://localhost:8000";
+const BUILDS_ENDPOINT = `${API_BASE}/api/builds`;
+
 export default function BuildPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { currentBuild, updateBuild } = useBuild();
+
+  const location = useLocation();
+  const userId =
+    location.state?.userId ||
+    localStorage.getItem("userId") ||
+    "leo";
+
+  const totalWeight = 0;
 
   // Component selections - initialize from context if available
   const [selectedFrame, setSelectedFrame] = useState("");
@@ -32,29 +46,40 @@ export default function BuildPage() {
     }
   }, []);
 
-  const handleSave = () => {
-    // Create/update build config
-    const build = {
-      id: currentBuild?.id || "build-" + Date.now(),
+  const handleSave = async () => {
+    if (!canSave) return;
+
+    const now = new Date().toISOString();
+    const payload = {
+      id: currentBuild?.id || undefined,
+      userId,
       name: currentBuild?.name || "Custom Build",
-      description: currentBuild?.description || "User created build",
+      note: currentBuild?.note || "",
       componentIds: {
-        frameId: selectedFrame || null,
-        motorId: selectedMotor || null,
-        propellerId: selectedPropeller || null,
+        frameId: selectedFrame,
+        motorId: selectedMotor,
+        propellerId: selectedPropeller,
         escId: selectedESC || null,
         flightControllerId: selectedFC || null,
-        batteryId: selectedBattery || null,
+        batteryId: selectedBattery,
         receiverId: selectedReceiver || null,
       },
-      createdAt: currentBuild?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      totalWeight: typeof totalWeight !== "undefined" ? totalWeight : undefined,
+      createdAt: currentBuild?.createdAt || now,
+      updatedAt: now,
     };
 
-    // Save to context
-    updateBuild(build);
+    const isUpdate = Boolean(payload.id);
+    const url = isUpdate
+      ? `${BUILDS_ENDPOINT}/${encodeURIComponent(payload.id)}`
+      : BUILDS_ENDPOINT;
 
-    // Navigate back to home
+    const res = await fetch(url, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => "Save failed"));
     navigate("/");
   };
 
@@ -85,6 +110,7 @@ export default function BuildPage() {
   };
 
   const canAnalyze = selectedMotor && selectedPropeller && selectedBattery && selectedFrame;
+  const canSave = !!canAnalyze;
 
   return (
     <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
@@ -281,12 +307,23 @@ export default function BuildPage() {
         </div>
       )}
 
-      {/* Bottom Buttons */}
       <div className="bottom-buttons">
-        <button className="action-btn save" onClick={handleSave}>
+        <button
+          className="action-btn save"
+          onClick={handleSave}
+          disabled={!canSave}
+          style={{ opacity: canSave ? 1 : 0.5, cursor: canSave ? "pointer" : "not-allowed" }}
+          title={canSave ? "Save & go Home" : "Select Frame, Motor, Propeller, Battery first"}
+        >
           💾 Save & Home
         </button>
-        <button className="action-btn analysis" disabled={!canAnalyze} onClick={handleAnalyze} style={{ opacity: canAnalyze ? 1 : 0.5 }}>
+
+        <button
+          className="action-btn analysis"
+          disabled={!canAnalyze}
+          onClick={handleAnalyze}
+          style={{ opacity: canAnalyze ? 1 : 0.5 }}
+        >
           📊 Analyze
         </button>
       </div>
@@ -303,7 +340,15 @@ export default function BuildPage() {
             <button className="menu-item" onClick={() => navigate("/")}>
               Home
             </button>
-            <button className="menu-item">Saved Builds</button>
+            <button
+              className="menu-item"
+              onClick={() => {
+                setMenuOpen(false);
+                navigate("/saved");
+              }}
+            >
+              Saved Builds
+            </button>
             <button
               className="menu-item"
               onClick={() => { setMenuOpen(false); navigate("/profile", { state: { userId: "leo" } }); }}

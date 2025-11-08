@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Optional
 from models.components import (
-    Motor, Propeller, ESC, FlightController, 
+    Motor, Propeller, ESC, FlightController,
     Frame, Battery, Receiver,
     ComponentDatabase, DroneBuild, DroneBuildConfig,
     DroneComponents
@@ -17,6 +17,54 @@ DATA_DIR = Path(__file__).parent.parent.parent / "rotorbench" / "src" / "data"
 COMPONENTS_FILE = DATA_DIR / "components.json"
 BUILDS_FILE = DATA_DIR / "builds.json"
 
+
+# ---------------------------
+# Helpers
+# ---------------------------
+
+def _load_json(path: Path, default):
+    if not path.exists():
+        return default
+    with open(path, "r") as f:
+        return json.load(f)
+
+def _save_json(path: Path, obj) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=2)
+
+def _ensure_component_ids(build: dict) -> dict:
+    """
+    Ensure the build dict contains a nested 'componentIds' object.
+    If missing (legacy flat schema), derive it from flat keys.
+    Does NOT remove flat keys (harmless); you can strip them later if desired.
+    """
+    if not isinstance(build, dict):
+        return build
+
+    # If already nested and a dict, keep it
+    if isinstance(build.get("componentIds"), dict):
+        return build
+
+    # Accept legacy alternatives for FC
+    fc_id = build.get("flightControllerId") or build.get("fcId")
+
+    build = dict(build)  # shallow copy to avoid side effects
+    build["componentIds"] = {
+        "frameId": build.get("frameId"),
+        "motorId": build.get("motorId"),
+        "propellerId": build.get("propellerId"),
+        "escId": build.get("escId"),
+        "flightControllerId": fc_id,
+        "batteryId": build.get("batteryId"),
+        "receiverId": build.get("receiverId"),
+    }
+    return build
+
+
+# ---------------------------
+# Component access
+# ---------------------------
 
 def load_all_components() -> Dict:
     """Load all components from single JSON file"""
@@ -30,52 +78,36 @@ def load_all_components() -> Dict:
             "batteries": [],
             "receivers": []
         }
-    
     with open(COMPONENTS_FILE, 'r') as f:
         return json.load(f)
 
-
 def get_all_motors() -> List[Motor]:
-    """Get all available motors"""
     data = load_all_components()
     return [Motor(**item) for item in data.get("motors", [])]
 
-
 def get_all_propellers() -> List[Propeller]:
-    """Get all available propellers"""
     data = load_all_components()
     return [Propeller(**item) for item in data.get("propellers", [])]
 
-
 def get_all_escs() -> List[ESC]:
-    """Get all available ESCs"""
     data = load_all_components()
     return [ESC(**item) for item in data.get("escs", [])]
 
-
 def get_all_flight_controllers() -> List[FlightController]:
-    """Get all available flight controllers"""
     data = load_all_components()
     return [FlightController(**item) for item in data.get("flight_controllers", [])]
 
-
 def get_all_frames() -> List[Frame]:
-    """Get all available frames"""
     data = load_all_components()
     return [Frame(**item) for item in data.get("frames", [])]
 
-
 def get_all_batteries() -> List[Battery]:
-    """Get all available batteries"""
     data = load_all_components()
     return [Battery(**item) for item in data.get("batteries", [])]
 
-
 def get_all_receivers() -> List[Receiver]:
-    """Get all available receivers"""
     data = load_all_components()
     return [Receiver(**item) for item in data.get("receivers", [])]
-
 
 def get_all_components_db() -> ComponentDatabase:
     """Get all components in a structured format"""
@@ -89,7 +121,6 @@ def get_all_components_db() -> ComponentDatabase:
         receivers=get_all_receivers()
     )
 
-
 def get_component_by_id(component_type: str, component_id: str):
     """Get a specific component by type and ID"""
     component_getters = {
@@ -101,29 +132,23 @@ def get_component_by_id(component_type: str, component_id: str):
         "battery": get_all_batteries,
         "receiver": get_all_receivers
     }
-    
     getter = component_getters.get(component_type)
     if not getter:
         return None
-    
-    components = getter()
-    for component in components:
+    for component in getter():
         if component.id == component_id:
             return component
-    
     return None
 
 
 def get_all_saved_builds() -> List[DroneBuildConfig]:
-    """Get all saved build configurations"""
-    if not BUILDS_FILE.exists():
-        return []
-    
-    with open(BUILDS_FILE, 'r') as f:
-        builds_data = json.load(f)
-    
-    return [DroneBuildConfig(**build) for build in builds_data]
-
+    """
+    Get all saved build configurations.
+    Normalizes legacy rows to include a nested 'componentIds' object.
+    """
+    builds_data = _load_json(BUILDS_FILE, default=[])
+    normalized = [_ensure_component_ids(b) for b in builds_data]
+    return [DroneBuildConfig(**b) for b in normalized]
 
 def hydrate_build(build_config: DroneBuildConfig) -> Optional[DroneBuild]:
     """
@@ -131,35 +156,37 @@ def hydrate_build(build_config: DroneBuildConfig) -> Optional[DroneBuild]:
     (with complete component objects) for analysis
     """
     components = DroneComponents()
-    
-    # Load frame
+
+    # Frame
     if build_config.component_ids.frame_id:
         components.frame = get_component_by_id("frame", build_config.component_ids.frame_id)
-    
-    # Load motor
+
+    # Motor (NOTE: if DroneComponents.motors expects a list, wrap it)
     if build_config.component_ids.motor_id:
-        components.motors = get_component_by_id("motor", build_config.component_ids.motor_id)
-    
-    # Load propeller
+        motor = get_component_by_id("motor", build_config.component_ids.motor_id)
+        components.motors = motor  # or [motor] if your model expects a list
+
+    # Propeller
     if build_config.component_ids.propeller_id:
-        components.propellers = get_component_by_id("propeller", build_config.component_ids.propeller_id)
-    
-    # Load ESC
+        prop = get_component_by_id("propeller", build_config.component_ids.propeller_id)
+        components.propellers = prop  # or [prop]
+
+    # ESC
     if build_config.component_ids.esc_id:
         components.esc = get_component_by_id("esc", build_config.component_ids.esc_id)
-    
-    # Load flight controller
+
+    # Flight controller
     if build_config.component_ids.flight_controller_id:
         components.flight_controller = get_component_by_id("flight_controller", build_config.component_ids.flight_controller_id)
-    
-    # Load battery
+
+    # Battery
     if build_config.component_ids.battery_id:
         components.battery = get_component_by_id("battery", build_config.component_ids.battery_id)
-    
-    # Load receiver
+
+    # Receiver
     if build_config.component_ids.receiver_id:
         components.receiver = get_component_by_id("receiver", build_config.component_ids.receiver_id)
-    
+
     return DroneBuild(
         id=build_config.id,
         name=build_config.name,
@@ -169,58 +196,42 @@ def hydrate_build(build_config: DroneBuildConfig) -> Optional[DroneBuild]:
         updated_at=build_config.updated_at
     )
 
-
 def save_build(build_config: DroneBuildConfig) -> bool:
-    """Save a build configuration to file"""
-    # Load existing builds
-    builds = []
-    if BUILDS_FILE.exists():
-        with open(BUILDS_FILE, 'r') as f:
-            builds = json.load(f)
-    
-    # Check if build already exists
-    existing_index = None
-    for i, b in enumerate(builds):
-        if b.get("id") == build_config.id:
-            existing_index = i
-            break
-    
-    # Convert to dict
+    """
+    Save a build configuration to file.
+    Always writes the nested 'componentIds' shape (aliases) so future reads parse cleanly.
+    """
+    builds = _load_json(BUILDS_FILE, default=[])
+
+    # Convert to dict using field aliases (camelCase), then ensure nested componentIds
     build_dict = build_config.model_dump(by_alias=True)
-    # Convert datetime to string
-    build_dict["createdAt"] = build_config.created_at.isoformat()
-    build_dict["updatedAt"] = build_config.updated_at.isoformat()
-    
+
+    # Ensure timestamps are ISO strings
+    if hasattr(build_config.created_at, "isoformat"):
+        build_dict["createdAt"] = build_config.created_at.isoformat()
+    if hasattr(build_config.updated_at, "isoformat"):
+        build_dict["updatedAt"] = build_config.updated_at.isoformat()
+
+    # Normalize nested componentIds (in case model was constructed from legacy data)
+    build_dict = _ensure_component_ids(build_dict)
+
     # Update or append
+    existing_index = next((i for i, b in enumerate(builds) if b.get("id") == build_config.id), None)
     if existing_index is not None:
         builds[existing_index] = build_dict
     else:
         builds.append(build_dict)
-    
-    # Save to file
-    with open(BUILDS_FILE, 'w') as f:
-        json.dump(builds, f, indent=2)
-    
-    return True
 
+    _save_json(BUILDS_FILE, builds)
+    return True
 
 def delete_build(build_id: str) -> bool:
     """Delete a build configuration"""
     if not BUILDS_FILE.exists():
         return False
-    
-    # Load existing builds
-    with open(BUILDS_FILE, 'r') as f:
-        builds = json.load(f)
-    
-    # Filter out the build to delete
+    builds = _load_json(BUILDS_FILE, default=[])
     new_builds = [b for b in builds if b.get("id") != build_id]
-    
     if len(new_builds) == len(builds):
-        return False  # Build not found
-    
-    # Save updated list
-    with open(BUILDS_FILE, 'w') as f:
-        json.dump(new_builds, f, indent=2)
-    
+        return False  # not found
+    _save_json(BUILDS_FILE, new_builds)
     return True
