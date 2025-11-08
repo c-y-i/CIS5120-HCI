@@ -92,7 +92,7 @@ The frontend will start at: **http://localhost:3000**
 
 **Backend:** FastAPI, Pydantic, Uvicorn
 
-**Frontend:** React, React Router, Recharts, CSS3
+**Frontend:** React, React Router, Recharts, Babylon.js, CSS3
 
 ## Testing
 
