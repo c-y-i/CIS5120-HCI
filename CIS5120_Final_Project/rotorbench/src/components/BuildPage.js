@@ -33,6 +33,10 @@ export default function BuildPage() {
 
   // Load from context on mount
   useEffect(() => {
+    // If a new build page is created, clear the old currentBuild.
+    if (!location.state?.build) {
+      updateBuild(null); // Clear context
+    }
     if (currentBuild?.componentIds) {
       setSelectedFrame(currentBuild.componentIds.frameId || "");
       setSelectedMotor(currentBuild.componentIds.motorId || "");
@@ -46,8 +50,8 @@ export default function BuildPage() {
 
   const handleSave = async () => {
     const now = new Date().toISOString();
-    const payload = {
-      id: currentBuild?.id || undefined,
+    const newBuild = {
+      id: crypto.randomUUID(), // Forever New ID
       userId,
       name: currentBuild?.name || "Custom Build",
       note: currentBuild?.note || "",
@@ -65,34 +69,25 @@ export default function BuildPage() {
       updatedAt: now,
     };
 
-    // Case 1: User not logged in (anonymous state)
-    if (!localStorage.getItem("userId") || userId === "leo") {
+    // Synchronously write to Context for use by AnalysisPage / HomePage
+    updateBuild(newBuild);
+
+    // Storage Logic (offline / online)
+    if (!userId || userId === "leo") {
       const localBuilds = JSON.parse(localStorage.getItem("offlineBuilds") || "[]");
-      localBuilds.push(payload);
+      localBuilds.push(newBuild);
       localStorage.setItem("offlineBuilds", JSON.stringify(localBuilds));
-      setMessage({
-        type: "success",
-        text: "✅ Build saved locally. Log in later to sync your builds!",
-      });
-
-      setTimeout(() => {
-        setMessage({ type: "", text: "" });
-        navigate("/"); // navigate after 3 seconds
-      }, 3000);
-
+      setMessage({ type: "success", text: "✅ Build saved locally." });
+      setTimeout(() => { setMessage({ type: "", text: "" }); navigate("/"); }, 2000);
       return;
     }
 
-    // Case 2: User is logged in, data saved to backend as normal
-    const isUpdate = Boolean(payload.id);
-    const url = isUpdate ? `${BUILDS_ENDPOINT}/${payload.id}` : BUILDS_ENDPOINT;
-
-    const res = await fetch(url, {
-      method: isUpdate ? "PUT" : "POST",
+    const res = await fetch(`${API_BASE}/api/builds`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(newBuild),
     });
-    if (!res.ok) throw new Error(await res.text().catch(() => "Save failed"));
+    if (!res.ok) throw new Error(await res.text());
     navigate("/");
   };
 

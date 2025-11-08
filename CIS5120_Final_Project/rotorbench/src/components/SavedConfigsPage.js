@@ -99,34 +99,9 @@ export default function SavedConfigsPage() {
             : `Saved Config #${idx + 1}`;
     };
 
-    const openWithAnalysis = async (build) => {
-        setBusyId(build.id);
-        try {
-            let analysis = null;
-
-            // Try existing cached analysis
-            let res = await fetch(`${API_BASE}/api/builds/${encodeURIComponent(build.id)}/analysis`);
-            if (res.ok) {
-                analysis = await res.json();
-            } else if (res.status === 404) {
-                // Run analysis if not present
-                res = await fetch(`${API_BASE}/api/builds/${encodeURIComponent(build.id)}/analyze`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ force: false }),
-                });
-                if (!res.ok) throw new Error(await res.text());
-                analysis = await res.json();
-            } else {
-                throw new Error(await res.text());
-            }
-
-            navigate("/analysis", { state: { build, analysis, userId } });
-        } catch (e) {
-            alert(e.message || "Failed to open analysis.");
-        } finally {
-            setBusyId(null);
-        }
+    const openWithAnalysis = (build) => {
+        // Pass the build directly to /analysis, with subsequent analysis handled uniformly by AnalysisPage.
+        navigate("/analysis", { state: { build, userId } });
     };
 
     const toggleExpand = (id) => {
@@ -219,31 +194,31 @@ export default function SavedConfigsPage() {
                                                 </p>
                                                 {it.note && <p className="saved-note">{it.note}</p>}
                                             </div>
+                                        </div>
 
-                                            <div className="saved-actions">
-                                                <button
-                                                    className="action-btn"
-                                                    onClick={() => openWithAnalysis(it)}
-                                                    disabled={busyId === it.id}
-                                                >
-                                                    🔍 Analyze
-                                                </button>
-                                                <button
-                                                    className="action-btn secondary"
-                                                    onClick={() => toggleExpand(it.id)}
-                                                >
-                                                    {isOpen ? "▾ Hide" : "▸ Components"}
-                                                </button>
-                                                <button
-                                                    className="action-btn danger"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDelete(it.id, it.name);
-                                                    }}
-                                                >
-                                                    🗑 Delete
-                                                </button>
-                                            </div>
+                                        <div className="saved-actions">
+                                            <button
+                                                className="action-btn"
+                                                onClick={() => openWithAnalysis(it)}
+                                                disabled={busyId === it.id}
+                                            >
+                                                🔍 Analyze
+                                            </button>
+                                            <button
+                                                className="action-btn secondary"
+                                                onClick={() => toggleExpand(it.id)}
+                                            >
+                                                {isOpen ? "▾ Hide" : "▸ Components"}
+                                            </button>
+                                            <button
+                                                className="action-btn danger"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(it.id, it.name);
+                                                }}
+                                            >
+                                                🗑 Delete
+                                            </button>
                                         </div>
 
                                         {/* Expandable Section */}
