@@ -14,5 +14,21 @@
     },
     "createdAt": "2025-11-04T03:12:12.246000+00:00",
     "updatedAt": "2025-11-08T07:48:16.922000+00:00"
+  },
+  {
+    "id": "90a0812d-a1f1-4325-916b-cae6ab884766",
+    "name": "Custom Build",
+    "description": null,
+    "componentIds": {
+      "frameId": "frame-5inch-220mm",
+      "motorId": "motor-2207-2750kv",
+      "propellerId": "prop-5146-tri",
+      "escId": "esc-iflight-succex-45a",
+      "flightControllerId": "fc-holybro-kakute-f7",
+      "batteryId": "battery-4s-2200mah-80c",
+      "receiverId": null
+    },
+    "createdAt": "2025-11-08T20:08:17.745000+00:00",
+    "updatedAt": "2025-11-08T20:08:17.745000+00:00"
   }
 ]
