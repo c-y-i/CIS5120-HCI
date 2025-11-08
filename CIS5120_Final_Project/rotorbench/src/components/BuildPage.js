@@ -17,10 +17,7 @@ export default function BuildPage() {
   const { currentBuild, updateBuild } = useBuild();
 
   const location = useLocation();
-  const userId =
-    location.state?.userId ||
-    localStorage.getItem("userId") ||
-    "leo";
+  const userId = localStorage.getItem("userId");
 
   const totalWeight = 0;
 
@@ -47,8 +44,6 @@ export default function BuildPage() {
   }, []);
 
   const handleSave = async () => {
-    if (!canSave) return;
-
     const now = new Date().toISOString();
     const payload = {
       id: currentBuild?.id || undefined,
@@ -64,15 +59,24 @@ export default function BuildPage() {
         batteryId: selectedBattery,
         receiverId: selectedReceiver || null,
       },
-      totalWeight: typeof totalWeight !== "undefined" ? totalWeight : undefined,
+      totalWeight,
       createdAt: currentBuild?.createdAt || now,
       updatedAt: now,
     };
 
+    // Case 1: User not logged in (anonymous state)
+    if (!localStorage.getItem("userId") || userId === "leo") {
+      const localBuilds = JSON.parse(localStorage.getItem("offlineBuilds") || "[]");
+      localBuilds.push(payload);
+      localStorage.setItem("offlineBuilds", JSON.stringify(localBuilds));
+      alert("✅ Build saved locally. Log in later to sync your builds!");
+      navigate("/");
+      return;
+    }
+
+    // Case 2: User is logged in, data saved to backend as normal
     const isUpdate = Boolean(payload.id);
-    const url = isUpdate
-      ? `${BUILDS_ENDPOINT}/${encodeURIComponent(payload.id)}`
-      : BUILDS_ENDPOINT;
+    const url = isUpdate ? `${BUILDS_ENDPOINT}/${payload.id}` : BUILDS_ENDPOINT;
 
     const res = await fetch(url, {
       method: isUpdate ? "PUT" : "POST",

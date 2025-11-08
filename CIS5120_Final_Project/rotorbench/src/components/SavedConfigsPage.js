@@ -17,27 +17,61 @@ export default function SavedConfigsPage() {
     const [q, setQ] = useState("");
     const [busyId, setBusyId] = useState(null);
     const [expandedId, setExpandedId] = useState(null);
+    const [message, setMessage] = useState({ type: "", text: "" });
 
     const navigate = useNavigate();
     const location = useLocation();
-    const userId = location.state?.userId || localStorage.getItem("userId") || "leo";
+    const userId = localStorage.getItem("userId");
+    const handleDelete = async (id, name) => {
+        if (userId === "leo" || !userId) {
+            const offlineBuilds = JSON.parse(localStorage.getItem("offlineBuilds") || "[]");
+            const updated = offlineBuilds.filter((b) => b.id !== id);
+            localStorage.setItem("offlineBuilds", JSON.stringify(updated));
+            setItems(updated);
+
+            setMessage({ type: "success", text: `🗑 Deleted offline build "${name}" successfully.` });
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/api/builds/${encodeURIComponent(id)}`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            setItems((prev) => prev.filter((it) => it.id !== id));
+
+            setMessage({ type: "success", text: `🗑 Deleted build "${name}" successfully.` });
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        } catch (e) {
+            setMessage({ type: "error", text: `❌ Failed to delete build: ${e.message}` });
+            setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+        }
+    };
 
     useEffect(() => {
         (async () => {
             setLoading(true);
             setError(null);
             try {
-                const res = await fetch(`${API_BASE}/api/builds?userId=${encodeURIComponent(userId)}`);
-                if (!res.ok) throw new Error(await res.text());
-                const data = await res.json();
-
-                // sort newest first (createdAt/updatedAt)
-                const sorted = (Array.isArray(data) ? data : []).sort((a, b) => {
-                    const ta = new Date(a.updatedAt || a.createdAt || 0).getTime();
-                    const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
-                    return tb - ta;
-                });
-                setItems(sorted);
+                // Case 1: User is logged in
+                if (userId && userId !== "leo") {
+                    const res = await fetch(`${API_BASE}/api/builds?userId=${encodeURIComponent(userId)}`);
+                    if (!res.ok) throw new Error(await res.text());
+                    const data = await res.json();
+                    const sorted = (Array.isArray(data) ? data : []).sort((a, b) => {
+                        const ta = new Date(a.updatedAt || a.createdAt || 0).getTime();
+                        const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
+                        return tb - ta;
+                    });
+                    setItems(sorted);
+                }
+                // Case 2: Not logged in -> Read localStorage
+                else {
+                    const localBuilds = JSON.parse(localStorage.getItem("offlineBuilds") || "[]");
+                    setItems(localBuilds);
+                }
             } catch (e) {
                 setError(e.message || "Failed to load saved builds");
             } finally {
@@ -100,14 +134,19 @@ export default function SavedConfigsPage() {
     };
 
     const CompRow = ({ label, value }) => (
-        <div style={{ display: "flex", gap: 8, padding: "4px 0" }}>
-            <span className="saved-tag" style={{ width: 140 }}>{label}</span>
-            <span className="saved-val" style={{ wordBreak: "break-all" }}>{value || "—"}</span>
+        <div className="saved-row">
+            <span className="saved-tag">{label}</span>
+            <span className="saved-val">{value || "—"}</span>
         </div>
     );
 
     return (
         <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
+            {message.text && (
+                <div className={`message-bar ${message.type}`}>
+                    {message.text}
+                </div>
+            )}
             {/* Top Bar */}
             <div className="top-bar">
                 <button className="icon-btn menu-btn" onClick={() => setMenuOpen(true)}>☰</button>
@@ -150,6 +189,7 @@ export default function SavedConfigsPage() {
             )}
 
             {/* List with dropdown per item */}
+            {/* List of Saved Builds */}
             {!loading && !error && (
                 <div className="analysis-content" style={{ padding: "0 14px 14px" }}>
                     {filtered.length === 0 ? (
@@ -162,58 +202,102 @@ export default function SavedConfigsPage() {
                             </div>
                         </div>
                     ) : (
-                        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                        <ul className="saved-list">
                             {filtered.map((it) => {
                                 const ids = it.componentIds || {};
                                 const title = displayName(it);
                                 const isOpen = expandedId === it.id;
+
                                 return (
-                                    <li key={it.id} style={{ marginBottom: 10 }}>
-                                        <div className="metric-card" style={{ padding: 0 }}>
-                                            {/* Row header */}
-                                            <div
-                                                className="metric-content"
-                                                style={{ cursor: busyId === it.id ? "wait" : "pointer", padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                                                onClick={() => openWithAnalysis(it)}
-                                                title="Open analysis"
-                                            >
-                                                <div>
-                                                    <div className="metric-label">Build</div>
-                                                    <div className="metric-value-large">{title}</div>
-                                                    {it.note && <div className="metric-subtitle">{it.note}</div>}
-                                                    {(it.updatedAt || it.createdAt) && (
-                                                        <div className="metric-badge">
-                                                            Updated {new Date(it.updatedAt || it.createdAt).toLocaleString()}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                    <li key={it.id} className="saved-card">
+                                        {/* Header */}
+                                        <div className="saved-header">
+                                            <div>
+                                                <h3 className="saved-title">{title}</h3>
+                                                <p className="saved-subtitle">
+                                                    Updated {new Date(it.updatedAt || it.createdAt).toLocaleString()}
+                                                </p>
+                                                {it.note && <p className="saved-note">{it.note}</p>}
+                                            </div>
+
+                                            <div className="saved-actions">
                                                 <button
                                                     className="action-btn"
-                                                    style={{ marginLeft: 12 }}
-                                                    onClick={(e) => { e.stopPropagation(); toggleExpand(it.id); }}
-                                                    aria-expanded={isOpen}
-                                                    title={isOpen ? "Hide components" : "Show components"}
+                                                    onClick={() => openWithAnalysis(it)}
+                                                    disabled={busyId === it.id}
+                                                >
+                                                    🔍 Analyze
+                                                </button>
+                                                <button
+                                                    className="action-btn secondary"
+                                                    onClick={() => toggleExpand(it.id)}
                                                 >
                                                     {isOpen ? "▾ Hide" : "▸ Components"}
                                                 </button>
+                                                <button
+                                                    className="action-btn danger"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(it.id, it.name);
+                                                    }}
+                                                >
+                                                    🗑 Delete
+                                                </button>
                                             </div>
-
-                                            {/* Dropdown body */}
-                                            {isOpen && (
-                                                <div style={{ padding: "0 14px 14px" }}>
-                                                    <CompRow label="Frame" value={ids.frameId} />
-                                                    <CompRow label="Motor" value={ids.motorId} />
-                                                    <CompRow label="Propeller" value={ids.propellerId} />
-                                                    <CompRow label="ESC" value={ids.escId} />
-                                                    <CompRow label="Flight Controller" value={ids.flightControllerId || it.fcId} />
-                                                    <CompRow label="Battery" value={ids.batteryId} />
-                                                    <CompRow label="Receiver" value={ids.receiverId} />
-                                                    {typeof it.totalWeight !== "undefined" && (
-                                                        <CompRow label="Total Weight" value={`${it.totalWeight} g`} />
-                                                    )}
-                                                </div>
-                                            )}
                                         </div>
+
+                                        {/* Expandable Section */}
+                                        {isOpen && (
+                                            <div className="component-grid">
+                                                <div className="component-card">
+                                                    <div className="component-icon">🧱</div>
+                                                    <div className="component-info">
+                                                        <div className="component-label">Frame</div>
+                                                        <div className="component-value">{ids.frameId || "—"}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="component-card">
+                                                    <div className="component-icon">⚙️</div>
+                                                    <div className="component-info">
+                                                        <div className="component-label">Motor</div>
+                                                        <div className="component-value">{ids.motorId || "—"}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="component-card">
+                                                    <div className="component-icon">🌀</div>
+                                                    <div className="component-info">
+                                                        <div className="component-label">Propeller</div>
+                                                        <div className="component-value">{ids.propellerId || "—"}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="component-card">
+                                                    <div className="component-icon">🔋</div>
+                                                    <div className="component-info">
+                                                        <div className="component-label">Battery</div>
+                                                        <div className="component-value">{ids.batteryId || "—"}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="component-card">
+                                                    <div className="component-icon">🧠</div>
+                                                    <div className="component-info">
+                                                        <div className="component-label">Flight Controller</div>
+                                                        <div className="component-value">{ids.flightControllerId || it.fcId || "—"}</div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="component-card">
+                                                    <div className="component-icon">📡</div>
+                                                    <div className="component-info">
+                                                        <div className="component-label">Receiver</div>
+                                                        <div className="component-value">{ids.receiverId || "—"}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </li>
                                 );
                             })}

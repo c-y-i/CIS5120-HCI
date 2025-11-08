@@ -1,103 +1,296 @@
+/* Toolbar */
 .saved-toolbar {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 0 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 14px;
 }
 
 .saved-search {
-    flex: 1;
+  flex: 1;
 }
 
+/* Saved Grid (if used for summary) */
 .saved-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 0 14px 14px;
-}
-
-.saved-card {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.saved-summary {
-    display: grid;
-    grid-template-columns: repeat(4, auto);
-    gap: 8px 14px;
-    margin-top: 8px;
-    align-items: baseline;
-}
-
-.saved-tag {
-    display: inline-block;
-    font-size: 11px;
-    color: #666;
-    margin-right: 6px;
-}
-
-.saved-val {
-    font-weight: 600;
-    color: #333;
-}
-
-.saved-actions {
-    display: flex;
-    gap: 8px;
-    padding: 10px 14px 14px;
-    flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 14px 14px;
 }
 
 @media (max-width: 480px) {
-    .saved-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .saved-summary {
-        grid-template-columns: repeat(2, auto);
-    }
+  .saved-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
+/* Saved Card (each build item)*/
+.saved-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.saved-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 14px;
+  transition: transform 0.15s ease;
+}
+
+.saved-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.saved-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 16px 0;
+}
+
+.saved-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: #222;
+}
+
+.saved-subtitle {
+  font-size: 12px;
+  color: #777;
+  margin: 4px 0;
+}
+
+.saved-note {
+  font-size: 13px;
+  color: #444;
+  margin: 0;
+}
+
+/* Action Buttons Row */
+.saved-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0;
+  margin-top: 4px;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #f9f9f9;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.action-btn:hover {
+  background: #f1f1f1;
+  transform: translateY(-1px);
+}
+
+.action-btn.analysis {
+  background: #3b82f6;
+  color: white;
+  border: none;
+}
+
+.action-btn.analysis:hover {
+  background: #2563eb;
+}
+
+.action-btn.secondary {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.action-btn.secondary:hover {
+  background: #eaeaea;
+}
+
+.action-btn.danger {
+  background: #ffe6e6;
+  color: #d33;
+  border: 1px solid #f2b5b5;
+}
+
+.action-btn.danger:hover {
+  background: #ffcccc;
+}
+
+/* Expanded Component Details */
+.component-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 0 16px 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.component-card {
+  display: flex;
+  align-items: center;
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.component-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.component-icon {
+  font-size: 22px;
+  margin-right: 12px;
+}
+
+.component-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.component-label {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.component-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Saved Row (for text-style info layout) */
+.saved-details {
+  margin-top: 10px;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 10px;
+}
+
+.saved-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 3px 0;
+  word-break: break-all;
+}
+
+.saved-tag {
+  color: #666;
+  width: 140px;
+  font-weight: 500;
+}
+
+.saved-val {
+  color: #222;
+  font-weight: 600;
+}
+
+/* Message Bar (top floating notifications) */
+.message-bar {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  animation: fadeInOut 0.3s ease;
+}
+
+.message-bar.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.message-bar.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@keyframes fadeInOut {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Modal (if used for delete confirmation) */
 .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, .35);
-    display: grid;
-    place-items: center;
-    z-index: 1000;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
 }
 
 .modal-card {
-    width: min(92vw, 420px);
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .15);
-    overflow: hidden;
+  width: min(92vw, 420px);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
 }
 
 .modal-body {
-    padding: 16px 16px 0 16px;
-    display: flex;
-    gap: 12px;
-    align-items: center;
+  padding: 16px 16px 0 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .modal-icon {
-    font-size: 22px;
+  font-size: 22px;
 }
 
 .modal-message {
-    font-size: 16px;
-    font-weight: 600;
-    color: #222;
+  font-size: 16px;
+  font-weight: 600;
+  color: #222;
 }
 
 .modal-actions {
-    display: flex;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 16px 16px 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+  .saved-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .saved-actions {
+    width: 100%;
     justify-content: flex-end;
-    gap: 10px;
-    padding: 14px 16px 16px 16px;
-    border-top: 1px solid #f0f0f0;
+  }
+
+  .saved-tag {
+    width: 100px;
+  }
 }

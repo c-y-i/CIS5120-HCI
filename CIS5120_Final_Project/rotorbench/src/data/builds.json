@@ -1,34 +1,18 @@
 [
   {
-    "id": "build-1762223968223",
-    "name": "Custom Build",
-    "description": null,
-    "componentIds": {
-      "frameId": "frame-5inch-220mm",
-      "motorId": "motor-2207-1750kv",
-      "propellerId": "prop-5140-tri",
-      "escId": "esc-mamba-f55a",
-      "flightControllerId": "fc-holybro-kakute-f7",
-      "batteryId": "battery-4s-1550mah-95c",
-      "receiverId": "rx-frsky-xm"
-    },
-    "createdAt": "2025-11-04T02:39:28.223000+00:00",
-    "updatedAt": "2025-11-08T05:13:18.059000+00:00"
-  },
-  {
     "id": "build-1762225932246",
     "name": "Custom Build",
     "description": null,
     "componentIds": {
       "frameId": "frame-5inch-225mm",
       "motorId": "motor-2306-2400kv",
-      "propellerId": "prop-5146-tri",
-      "escId": "esc-mamba-f55a",
-      "flightControllerId": "fc-holybro-kakute-f7",
-      "batteryId": "battery-4s-1550mah-95c",
-      "receiverId": "rx-frsky-xm"
+      "propellerId": "prop-5143-tri",
+      "escId": "esc-iflight-succex-45a",
+      "flightControllerId": "fc-speedybee-f405-v3",
+      "batteryId": "battery-4s-1500mah-75c",
+      "receiverId": "rx-elrs-24g"
     },
     "createdAt": "2025-11-04T03:12:12.246000+00:00",
-    "updatedAt": "2025-11-08T06:32:18.826000+00:00"
+    "updatedAt": "2025-11-08T07:48:16.922000+00:00"
   }
 ]

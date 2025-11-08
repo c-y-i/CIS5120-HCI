@@ -78,19 +78,21 @@ export default function UserProfilePage() {
         setError(null);
         setMessage({ type: "", text: "" });
 
-        // Step 1: Input validation
+        // Step 1: Basic Verification
         if (!user.email || user.email.trim() === "") {
             setSaving(false);
-            setMessage({ type: "error", text: "Please enter your email address to register." });
+            setMessage({
+                type: "error",
+                text: "Please enter your email address to register.",
+            });
             return;
         }
 
         try {
-            const isNew = !user.id; // Determine whether an ID already exists
+            const isNew = !user.id;
             const url = isNew
-                ? "http://localhost:8000/api/users"                // New registration
-                : `http://localhost:8000/api/users/${user.id}`;    // Already exists -> Update
-
+                ? "http://localhost:8000/api/users" // New registration
+                : `http://localhost:8000/api/users/${user.id}`; // Update
             const method = isNew ? "POST" : "PUT";
 
             const response = await fetch(url, {
@@ -109,6 +111,36 @@ export default function UserProfilePage() {
             setUser(saved);
             localStorage.setItem("userId", saved.id);
 
+            // Step 2: Synchronise offline builds (offlineBuilds → user accounts)
+            const offline = JSON.parse(localStorage.getItem("offlineBuilds") || "[]");
+            if (offline.length > 0) {
+                setMessage({
+                    type: "info",
+                    text: `☁️ Syncing ${offline.length} offline builds to your account...`,
+                });
+
+                for (const b of offline) {
+                    try {
+                        b.userId = saved.id; // Bound to the current user
+                        await fetch("http://localhost:8000/api/builds", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(b),
+                        });
+                    } catch (e) {
+                        console.error("Failed to sync build:", e);
+                    }
+                }
+
+                // Clear local cache
+                localStorage.removeItem("offlineBuilds");
+                setMessage({
+                    type: "success",
+                    text: "✅ Offline builds successfully synced to your account!",
+                });
+            }
+
+            // Step 3: Display the corresponding prompt based on the status
             if (result.isNew === false) {
                 setMessage({
                     type: "success",
@@ -120,7 +152,6 @@ export default function UserProfilePage() {
                     text: "🎉 Registration successful! Let's get started.",
                 });
             } else {
-                // Fallback for PUT or updates
                 setMessage({
                     type: "success",
                     text: "💾 Profile updated successfully!",
@@ -133,10 +164,13 @@ export default function UserProfilePage() {
             setMessage({ type: "error", text: e.message });
         } finally {
             setSaving(false);
-            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+            // Please allow a slightly longer retention period (if recently synchronised).
+            setTimeout(
+                () => setMessage({ type: "", text: "" }),
+                5000
+            );
         }
     };
-
 
     return (
         <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
