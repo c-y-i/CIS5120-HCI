@@ -36,5 +36,19 @@
     },
     "createdAt": "2025-11-08T06:53:29.485302",
     "updatedAt": "2025-11-08T06:53:29.485302"
+  },
+  {
+    "id": "45903756-0711-4a1c-8dbf-5a2d283e4a94",
+    "email": "jasonchen@seas.upenn.edu",
+    "displayName": "jason chen",
+    "githubUsername": "jason2504",
+    "avatarUrl": null,
+    "preferences": {
+      "theme": "system",
+      "notifications": "enabled",
+      "language": "en-US"
+    },
+    "createdAt": "2025-11-10T16:13:18.949921",
+    "updatedAt": "2025-11-10T16:13:18.949921"
   }
 ]

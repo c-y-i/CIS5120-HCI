@@ -30,5 +30,21 @@
     },
     "createdAt": "2025-11-08T20:08:17.745000+00:00",
     "updatedAt": "2025-11-08T20:08:17.745000+00:00"
+  },
+  {
+    "id": "dc30da84-c247-4c2a-9594-38c4d002f544",
+    "name": "Custom Build",
+    "description": null,
+    "componentIds": {
+      "frameId": "frame-5inch-220mm",
+      "motorId": "motor-2306-1700kv",
+      "propellerId": "prop-5140-tri",
+      "escId": "esc-iflight-succex-45a",
+      "flightControllerId": "fc-speedybee-f405-v3",
+      "batteryId": "battery-4s-3000mah-90c",
+      "receiverId": "rx-elrs-24g"
+    },
+    "createdAt": "2025-11-10T16:05:27.792000+00:00",
+    "updatedAt": "2025-11-10T16:05:27.792000+00:00"
   }
 ]

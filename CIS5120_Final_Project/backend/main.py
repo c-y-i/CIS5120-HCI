@@ -5,9 +5,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from contextlib import asynccontextmanager
+import json, io, zipfile, hashlib, subprocess
 import uvicorn
+import pathlib
 
 from models.components import (
     Motor, Propeller, ESC, FlightController,
@@ -36,6 +38,10 @@ from utils.user_data import list_users, get_user, save_user, delete_user
 from utils.builds_data import list_builds, get_build, create_build, update_build, delete_build
 
 from datetime import datetime
+
+ASSET_ROOT = pathlib.Path("/backend/assets").resolve()
+CACHE_ROOT = pathlib.Path("/backend/assets-cache").resolve()
+SUPPORTED  = {".obj",".stl",".ply",".off",".dae",".3mf",".gltf",".glb",".step",".stp",".iges",".igs"}
 
 class Build(BaseModel):
     id: Optional[str] = None
