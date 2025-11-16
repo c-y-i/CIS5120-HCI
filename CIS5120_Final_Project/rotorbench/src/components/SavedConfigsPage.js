@@ -202,7 +202,7 @@ export default function SavedConfigsPage() {
                                                 onClick={() => openWithAnalysis(it)}
                                                 disabled={busyId === it.id}
                                             >
-                                                🔍 Analyze
+                                                📊 Analyze
                                             </button>
                                             <button
                                                 className="action-btn secondary"
