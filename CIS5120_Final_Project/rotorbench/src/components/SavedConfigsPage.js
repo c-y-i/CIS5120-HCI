@@ -3,11 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
 import "../styles/home.css"; 
 import "../styles/saved.css";
-
-const API_BASE =
-    (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE) ||
-    process.env.REACT_APP_API_BASE ||
-    "http://localhost:8000";
+import API_BASE from "../config/api";
 
 export default function SavedConfigsPage() {
     const [menuOpen, setMenuOpen] = useState(false);

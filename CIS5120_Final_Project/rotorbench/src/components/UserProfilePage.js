@@ -4,6 +4,7 @@ import "../styles/home.css";
 import "../styles/analysis.css";     // reuse typography/sections/palette
 import "../styles/profile.css";      // small profile-only tweaks
 import logo from "../assets/logo.png";
+import API_BASE from "../config/api";
 
 export default function UserProfilePage() {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -39,7 +40,7 @@ export default function UserProfilePage() {
             // Logged in => Retrieve backend user information
             setLoading(true);
             try {
-                const res = await fetch(`http://localhost:8000/api/users/${storedId}`);
+                const res = await fetch(`${API_BASE}/api/users/${storedId}`);
                 if (!res.ok) throw new Error("User not found, please re-register.");
                 const data = await res.json();
                 setUser(data);
@@ -91,8 +92,8 @@ export default function UserProfilePage() {
         try {
             const isNew = !user.id;
             const url = isNew
-                ? "http://localhost:8000/api/users" // New registration
-                : `http://localhost:8000/api/users/${user.id}`; // Update
+                ? `${API_BASE}/api/users` // New registration
+                : `${API_BASE}/api/users/${user.id}`; // Update
             const method = isNew ? "POST" : "PUT";
 
             const response = await fetch(url, {
@@ -122,7 +123,7 @@ export default function UserProfilePage() {
                 for (const b of offline) {
                     try {
                         b.userId = saved.id; // Bound to the current user
-                        await fetch("http://localhost:8000/api/builds", {
+                        await fetch(`${API_BASE}/api/builds`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify(b),

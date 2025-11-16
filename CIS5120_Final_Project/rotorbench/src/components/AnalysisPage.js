@@ -15,6 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import API_BASE from "../config/api";
 
 export default function AnalysisPage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -83,7 +84,7 @@ export default function AnalysisPage() {
 
       console.log("Sending to API:", JSON.stringify(hydratedBuild, null, 2));
 
-      const response = await fetch("http://localhost:8000/api/builds/analyze", {
+      const response = await fetch(`${API_BASE}/api/builds/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

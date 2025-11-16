@@ -4,11 +4,8 @@ import { useBuild } from "../context/BuildContext";
 import "../styles/home.css";
 import logo from "../assets/logo.png";
 import componentsData from "../data/components.json";
+import API_BASE from "../config/api";
 
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE) ||
-  process.env.REACT_APP_API_BASE ||
-  "http://localhost:8000";
 const BUILDS_ENDPOINT = `${API_BASE}/api/builds`;
 
 export default function BuildPage() {
