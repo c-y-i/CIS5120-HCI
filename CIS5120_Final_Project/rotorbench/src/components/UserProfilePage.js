@@ -371,7 +371,7 @@ export default function UserProfilePage() {
                 {!edit ? (
                     <>
                         <button className="action-btn save" onClick={() => setEdit(true)}>✏️ Edit</button>
-                        <button className="action-btn order" onClick={() => navigate(-1)}>← Back</button>
+                        <button className="action-btn order" onClick={() => navigate(-1)}>🔙 Back</button>
                     </>
                 ) : (
                     <>

@@ -472,7 +472,7 @@ export default function AnalysisPage() {
       {/* Bottom Buttons */}
       <div className="bottom-buttons">
         <button className="action-btn save" onClick={() => navigate("/build", { state: { build } })}>
-          💾 Save
+          🛠️ Back to build
         </button>
         <button className="action-btn order">🛒 Order</button>
       </div>

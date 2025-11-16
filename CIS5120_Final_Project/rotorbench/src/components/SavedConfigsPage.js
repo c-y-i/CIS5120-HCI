@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import "../styles/home.css";
-import "../styles/analysis.css";
 import logo from "../assets/logo.png";
+import "../styles/home.css"; 
+import "../styles/saved.css";
 
 const API_BASE =
     (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE) ||
@@ -116,7 +116,7 @@ export default function SavedConfigsPage() {
     );
 
     return (
-        <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
+        <div className={`app-container saved-page ${menuOpen ? "menu-open" : ""}`}>
             {message.text && (
                 <div className={`message-bar ${message.type}`}>
                     {message.text}
@@ -135,7 +135,7 @@ export default function SavedConfigsPage() {
             {/* Header + search */}
             <div className="page-header">
                 <h2 className="page-title">Saved Configurations</h2>
-                <div className="saved-toolbar" style={{ display: "flex", gap: 10, padding: "0 14px" }}>
+                <div className="saved-toolbar">
                     <input
                         className="input-field"
                         placeholder="Search saved configs…"
