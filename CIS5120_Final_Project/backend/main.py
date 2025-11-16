@@ -78,8 +78,8 @@ app = FastAPI(title="RotorBench API", version="1.0.0", lifespan=lifespan)
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=False,  # Must be False when using ["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
