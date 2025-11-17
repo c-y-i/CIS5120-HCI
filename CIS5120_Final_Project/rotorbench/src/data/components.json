@@ -1,6 +1,45 @@
 {
   "motors": [
     {
+      "id": "motor-1104-7500kv",
+      "name": "1104 7500KV",
+      "kv": 7500,
+      "weight": 5.6,
+      "maxCurrent": 13.1,
+      "voltage": {
+        "min": 7.4,
+        "max": 15.0
+      },
+      "size": "1104",
+      "price": 16.99
+    },
+    {
+      "id": "motor-1504.5-4000kv",
+      "name": "1504.5 4000KV",
+      "kv": 4000,
+      "weight": 12,
+      "maxCurrent": 11.9,
+      "voltage": {
+        "min": 11.1,
+        "max": 14.8
+      },
+      "size": "1504.5",
+      "price": 20.99
+    },
+    {
+      "id": "motor-1804-2800kv",
+      "name": "1804 2800KV",
+      "kv": 2800,
+      "weight": 22,
+      "maxCurrent": 15,
+      "voltage": {
+        "min": 7.4,
+        "max": 14.8
+      },
+      "size": "1804",
+      "price": 22.99
+    },
+    {
       "id": "motor-2207-1750kv",
       "name": "2207 1750KV",
       "kv": 1750,
@@ -177,6 +216,18 @@
     }
   ],
   "flight_controllers": [
+    {
+      "id": "fc-iflight-borg-5s-rx",
+      "name": "iFlight Borg 5S RX",
+      "manufacturer": "iFlight",
+      "processor": "AT32F435RGT7",
+      "weight": 6.9,
+      "firmware": ["Betaflight"],
+      "imu": "ICM42688",
+      "maxVoltage": 33.6,
+      "features": ["OSD", "Blackbox", "Built-in Receiver"],
+      "price": 50.99
+    },
     {
       "id": "fc-speedybee-f405-v3",
       "name": "SpeedyBee F405 V3",
