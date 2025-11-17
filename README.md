@@ -15,7 +15,7 @@ RotorBench helps FPV drone enthusiasts design, analyze, and optimize their drone
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/CIS5120-HCI.git
+git clone https://github.com/c-y-i/CIS5120-HCI.git
 cd CIS5120-HCI/CIS5120_Final_Project
 ```
 
