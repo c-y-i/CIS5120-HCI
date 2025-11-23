@@ -1,4 +1,12 @@
 fastapi>=0.104.0
 uvicorn>=0.24.0
 pydantic>=2.4.0
+trimesh>=4.0.0
+pygltflib>=1.16.0
+numpy>=1.24.0
+networkx>=2.0.0
+cascadio>=0.0.17  # For STEP/STP file support
+# Optional dependencies for better STEP file support:
+# pip install trimesh[easy]
+# or install: pip install pythonocc-core (for full STEP support)
 

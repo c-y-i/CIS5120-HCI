@@ -3,6 +3,7 @@ Main module for the RotorBench backend.
 """
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from typing import List
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from contextlib import asynccontextmanager
 import json, io, zipfile, hashlib, subprocess
 import uvicorn
 import pathlib
+import logging
 
 from models.components import (
     Motor, Propeller, ESC, FlightController,
@@ -36,12 +38,23 @@ from utils.build_analysis import analyze_build
 from models.user import UserProfile
 from utils.user_data import list_users, get_user, save_user, delete_user
 from utils.builds_data import list_builds, get_build, create_build, update_build, delete_build
+from utils.model_converter import ModelConverter
 
 from datetime import datetime
 
-ASSET_ROOT = pathlib.Path("/backend/assets").resolve()
-CACHE_ROOT = pathlib.Path("/backend/assets-cache").resolve()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+ASSET_ROOT = pathlib.Path(__file__).parent / "assets"
+CACHE_ROOT = pathlib.Path(__file__).parent / "assets-cache"
 SUPPORTED  = {".obj",".stl",".ply",".off",".dae",".3mf",".gltf",".glb",".step",".stp",".iges",".igs"}
+
+# Cache TTL in hours (set to 0 to disable TTL, files only expire when source changes)
+CACHE_TTL_HOURS = 24  # Cached models expire after 24 hours
+
+# Initialize model converter with TTL
+model_converter = ModelConverter(ASSET_ROOT, CACHE_ROOT, cache_ttl_hours=CACHE_TTL_HOURS)
 
 class Build(BaseModel):
     id: Optional[str] = None
@@ -68,9 +81,21 @@ async def lifespan(app: FastAPI):
     print("API Server: http://localhost:8000")
     print("API Docs: http://localhost:8000/docs")
     print("CORS Enabled for: http://localhost:3000")
+    print(f"Cache TTL: {CACHE_TTL_HOURS} hours")
+    print("="*60)
+    
+    # Clean up expired cache on startup
+    deleted = model_converter.cleanup_expired_cache()
+    if deleted > 0:
+        print(f"Cleaned up {deleted} expired cache file(s)")
+    
+    cache_stats = model_converter.get_cache_stats()
+    print(f"Cache: {cache_stats['total_files']} files, {cache_stats['total_size_mb']} MB")
     print("="*60 + "\n")
+    
     yield
-    # Shutdown (if needed)
+    
+    # Shutdown
     print("\nRotorBench Backend Server Shutting Down")
 
 app = FastAPI(title="RotorBench API", version="1.0.0", lifespan=lifespan)
@@ -371,6 +396,211 @@ def api_delete_build(bid: str):
     if not delete_build(bid):
         raise HTTPException(status_code=404, detail="Build not found")
     return {"ok": True}
+
+
+# Model conversion and serving endpoints
+@app.get("/api/models/convert/{category}/{filename}")
+@app.head("/api/models/convert/{category}/{filename}")
+async def convert_model(
+    category: str,
+    filename: str,
+    format: str = Query(default="glb", pattern="^(glb|gltf)$")
+):
+    """
+    Convert a 3D model file to GLTF/GLB format and return the converted file.
+    Supports both GET (download) and HEAD (check existence) requests.
+    
+    Args:
+        category: Component category (motors, propellers, frames, etc.)
+        filename: Model filename (e.g., 'motor-2207-1750kv.stp')
+        format: Output format ('glb' for binary, 'gltf' for JSON)
+    
+    Returns:
+        The converted GLTF/GLB file
+    """
+    logger.info(f"Converting model: {category}/{filename} to {format}")
+    
+    converted_path, error = model_converter.convert_component_model(
+        category=category,
+        filename=filename,
+        output_format=format
+    )
+    
+    if error:
+        logger.error(f"Conversion failed: {error}")
+        raise HTTPException(status_code=404, detail=error)
+    
+    if not converted_path or not converted_path.exists():
+        raise HTTPException(status_code=500, detail="Conversion failed")
+    
+    # Determine media type
+    media_type = "model/gltf-binary" if format == "glb" else "model/gltf+json"
+    
+    return FileResponse(
+        path=str(converted_path),
+        media_type=media_type,
+        filename=f"{pathlib.Path(filename).stem}.{format}"
+    )
+
+
+@app.get("/api/models/list/{category}")
+async def list_models(category: str):
+    """
+    List all available 3D model files in a category.
+    
+    Args:
+        category: Component category (motors, propellers, frames, etc.)
+    
+    Returns:
+        List of available model files
+    """
+    category_path = ASSET_ROOT / category
+    
+    if not category_path.exists() or not category_path.is_dir():
+        raise HTTPException(status_code=404, detail=f"Category not found: {category}")
+    
+    models = []
+    for file_path in category_path.iterdir():
+        if file_path.is_file() and file_path.suffix.lower() in SUPPORTED:
+            models.append({
+                "filename": file_path.name,
+                "category": category,
+                "extension": file_path.suffix.lower(),
+                "size": file_path.stat().st_size
+            })
+    
+    return {"category": category, "models": models}
+
+
+@app.get("/api/models/categories")
+async def list_categories():
+    """
+    List all available component categories with 3D models.
+    
+    Returns:
+        List of categories
+    """
+    if not ASSET_ROOT.exists():
+        raise HTTPException(status_code=500, detail="Assets directory not found")
+    
+    categories = []
+    for category_path in ASSET_ROOT.iterdir():
+        if category_path.is_dir():
+            # Count model files in this category
+            model_count = sum(
+                1 for f in category_path.iterdir()
+                if f.is_file() and f.suffix.lower() in SUPPORTED
+            )
+            if model_count > 0:
+                categories.append({
+                    "name": category_path.name,
+                    "model_count": model_count
+                })
+    
+    return {"categories": categories}
+
+
+@app.post("/api/models/batch-convert")
+async def batch_convert_models(
+    request: dict,
+    format: str = Query(default="glb", pattern="^(glb|gltf)$")
+):
+    """
+    Convert multiple models at once.
+    
+    Request body:
+    {
+        "models": [
+            {"category": "motors", "filename": "motor-2207-1750kv.stp"},
+            {"category": "frames", "filename": "frame-5inch-220mm.step"}
+        ]
+    }
+    
+    Returns:
+        Status of each conversion with download URLs
+    """
+    models = request.get("models", [])
+    if not models:
+        raise HTTPException(status_code=400, detail="No models specified")
+    
+    results = []
+    for model_info in models:
+        category = model_info.get("category")
+        filename = model_info.get("filename")
+        
+        if not category or not filename:
+            results.append({
+                "category": category,
+                "filename": filename,
+                "status": "error",
+                "error": "Missing category or filename"
+            })
+            continue
+        
+        converted_path, error = model_converter.convert_component_model(
+            category=category,
+            filename=filename,
+            output_format=format
+        )
+        
+        if error or not converted_path:
+            results.append({
+                "category": category,
+                "filename": filename,
+                "status": "error",
+                "error": error or "Conversion failed"
+            })
+        else:
+            results.append({
+                "category": category,
+                "filename": filename,
+                "status": "success",
+                "download_url": f"/api/models/convert/{category}/{filename}?format={format}"
+            })
+    
+    return {"results": results}
+
+
+@app.get("/api/models/cache/stats")
+async def get_cache_stats():
+    """
+    Get statistics about the model cache.
+    
+    Returns:
+        Cache statistics including file count, size, and expired files
+    """
+    return model_converter.get_cache_stats()
+
+
+@app.post("/api/models/cache/cleanup")
+async def cleanup_cache():
+    """
+    Remove expired cached model files based on TTL.
+    
+    Returns:
+        Number of files deleted
+    """
+    deleted_count = model_converter.cleanup_expired_cache()
+    return {
+        "message": f"Cache cleanup completed",
+        "deleted_files": deleted_count
+    }
+
+
+@app.delete("/api/models/cache/clear")
+async def clear_cache():
+    """
+    Remove all cached model files.
+    
+    Returns:
+        Number of files deleted
+    """
+    deleted_count = model_converter.clear_all_cache()
+    return {
+        "message": "Cache cleared",
+        "deleted_files": deleted_count
+    }
+
 
 if __name__ == "__main__":
     # boot up api server

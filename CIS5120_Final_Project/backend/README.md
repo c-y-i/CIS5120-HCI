@@ -32,8 +32,42 @@ Notes
 - The FastAPI app entrypoint is `main.py` and the FastAPI instance is named `app` (run as `main:app`).
 - For production deployments consider using a WSGI/ASGI server configuration such as `gunicorn` with `uvicorn` workers, and switch to a production DB (Postgres) and object storage for large model assets.
 
+## NEW: 3D Model Conversion API 🎉
+
+The backend now includes automatic 3D model conversion to GLTF/GLB format!
+
+### Quick Start
+```bash
+# Server is already running? Test the new endpoints:
+curl http://localhost:8000/api/models/categories
+curl http://localhost:8000/api/models/list/motors
+```
+
+### Features
+- Convert STEP, STL, OBJ, and other 3D formats to GLTF/GLB
+- Smart caching system (converts once, serves many times)
+- REST API endpoints for frontend integration
+- Batch conversion support
+- Organized by component category
+
+### Documentation
+- **API Documentation**: See `MODEL_CONVERSION_API.md` for complete API reference
+- **Quick Start**: See `../QUICK_START_MODELS.md` for frontend integration examples
+- **Architecture**: See `../ARCHITECTURE_DIAGRAM.md` for system overview
+- **Testing**: Run `python3 test_model_conversion.py` to test all endpoints
+
+### Usage in Frontend
+```javascript
+// Get model URL and use in Babylon.js or Three.js
+const modelUrl = `http://localhost:8000/api/models/convert/motors/motor-2207-1750kv.stp?format=glb`;
+BABYLON.SceneLoader.Append(modelUrl, '', scene);
+```
+
+See `../rotorbench/src/components/ModelConverterExample.js` for a complete React example.
+
 Next steps for dev
-- Convert at least one model asset to `.glb` and place it under `rotorbench/public/models` (or configure an S3/minio bucket for assets).
+- ~~Convert at least one model asset to `.glb`~~  Now automatic via API!
+- Use the model conversion API in your 3D viewers (BabylonViewer, etc.)
 - If you plan to migrate JSON storage to a DB, scaffold `database.py` and create migrations with Alembic.
 
 Troubleshooting

@@ -77,32 +77,6 @@
       },
       "size": "2306",
       "price": 16.99
-    },
-    {
-      "id": "motor-2306-2400kv",
-      "name": "2306 2400KV",
-      "kv": 2400,
-      "weight": 30,
-      "maxCurrent": 42,
-      "voltage": {
-        "min": 11.1,
-        "max": 18.5
-      },
-      "size": "2306",
-      "price": 17.99
-    },
-    {
-      "id": "motor-2207-2750kv",
-      "name": "2207 2750KV",
-      "kv": 2750,
-      "weight": 28,
-      "maxCurrent": 45,
-      "voltage": {
-        "min": 11.1,
-        "max": 14.8
-      },
-      "size": "2207",
-      "price": 15.99
     }
   ],
   "propellers": [
@@ -193,110 +167,6 @@
         { "kv": 2600, "thrust": 1820 },
         { "kv": 2750, "thrust": 1900 },
         { "kv": 3000, "thrust": 2020 }
-      ]
-    },
-    {
-      "id": "prop-5140-tri",
-      "name": "5140 Tri-Blade",
-      "size": 5.1,
-      "pitch": 4.0,
-      "bladeCount": 3,
-      "weight": 4.2,
-      "material": "Polycarbonate",
-      "price": 2.49,
-      "thrustData": [
-        { "kv": 1500, "thrust": 1100 },
-        { "kv": 1600, "thrust": 1200 },
-        { "kv": 1700, "thrust": 1300 },
-        { "kv": 1750, "thrust": 1350 },
-        { "kv": 1800, "thrust": 1400 },
-        { "kv": 1850, "thrust": 1450 },
-        { "kv": 1900, "thrust": 1500 },
-        { "kv": 2000, "thrust": 1580 },
-        { "kv": 2200, "thrust": 1680 },
-        { "kv": 2400, "thrust": 1780 },
-        { "kv": 2500, "thrust": 1830 },
-        { "kv": 2600, "thrust": 1880 },
-        { "kv": 2750, "thrust": 1960 },
-        { "kv": 3000, "thrust": 2080 }
-      ]
-    },
-    {
-      "id": "prop-5143-tri",
-      "name": "5143 Tri-Blade",
-      "size": 5.1,
-      "pitch": 4.3,
-      "bladeCount": 3,
-      "weight": 4.5,
-      "material": "Polycarbonate",
-      "price": 2.79,
-      "thrustData": [
-        { "kv": 1500, "thrust": 1150 },
-        { "kv": 1600, "thrust": 1250 },
-        { "kv": 1700, "thrust": 1350 },
-        { "kv": 1750, "thrust": 1400 },
-        { "kv": 1800, "thrust": 1450 },
-        { "kv": 1850, "thrust": 1500 },
-        { "kv": 1900, "thrust": 1550 },
-        { "kv": 2000, "thrust": 1630 },
-        { "kv": 2200, "thrust": 1730 },
-        { "kv": 2400, "thrust": 1830 },
-        { "kv": 2500, "thrust": 1880 },
-        { "kv": 2600, "thrust": 1930 },
-        { "kv": 2750, "thrust": 2010 },
-        { "kv": 3000, "thrust": 2130 }
-      ]
-    },
-    {
-      "id": "prop-5146-tri",
-      "name": "5146 Tri-Blade",
-      "size": 5.1,
-      "pitch": 4.6,
-      "bladeCount": 3,
-      "weight": 4.8,
-      "material": "Polycarbonate",
-      "price": 2.99,
-      "thrustData": [
-        { "kv": 1500, "thrust": 1200 },
-        { "kv": 1600, "thrust": 1300 },
-        { "kv": 1700, "thrust": 1400 },
-        { "kv": 1750, "thrust": 1450 },
-        { "kv": 1800, "thrust": 1500 },
-        { "kv": 1850, "thrust": 1550 },
-        { "kv": 1900, "thrust": 1600 },
-        { "kv": 2000, "thrust": 1680 },
-        { "kv": 2200, "thrust": 1780 },
-        { "kv": 2400, "thrust": 1880 },
-        { "kv": 2500, "thrust": 1930 },
-        { "kv": 2600, "thrust": 1980 },
-        { "kv": 2750, "thrust": 2060 },
-        { "kv": 3000, "thrust": 2180 }
-      ]
-    },
-    {
-      "id": "prop-5040-quad",
-      "name": "5040 Quad-Blade",
-      "size": 5.0,
-      "pitch": 4.0,
-      "bladeCount": 4,
-      "weight": 5.1,
-      "material": "Polycarbonate",
-      "price": 3.29,
-      "thrustData": [
-        { "kv": 1500, "thrust": 1120 },
-        { "kv": 1600, "thrust": 1220 },
-        { "kv": 1700, "thrust": 1320 },
-        { "kv": 1750, "thrust": 1370 },
-        { "kv": 1800, "thrust": 1420 },
-        { "kv": 1850, "thrust": 1470 },
-        { "kv": 1900, "thrust": 1520 },
-        { "kv": 2000, "thrust": 1600 },
-        { "kv": 2200, "thrust": 1700 },
-        { "kv": 2400, "thrust": 1800 },
-        { "kv": 2500, "thrust": 1850 },
-        { "kv": 2600, "thrust": 1900 },
-        { "kv": 2750, "thrust": 1980 },
-        { "kv": 3000, "thrust": 2100 }
       ]
     }
   ],
@@ -464,39 +334,6 @@
       "price": 32.99
     },
     {
-      "id": "battery-4s-1500mah-75c",
-      "name": "4S 1500mAh 75C",
-      "capacity": 1500,
-      "voltage": 14.8,
-      "cells": 4,
-      "cRating": 75,
-      "weight": 168,
-      "dischargeProfile": [
-        { "percentage": 100, "voltage": 16.8 },
-        { "percentage": 95, "voltage": 16.6 },
-        { "percentage": 90, "voltage": 16.4 },
-        { "percentage": 85, "voltage": 16.2 },
-        { "percentage": 80, "voltage": 16.0 },
-        { "percentage": 75, "voltage": 15.8 },
-        { "percentage": 70, "voltage": 15.6 },
-        { "percentage": 65, "voltage": 15.4 },
-        { "percentage": 60, "voltage": 15.2 },
-        { "percentage": 55, "voltage": 15.0 },
-        { "percentage": 50, "voltage": 14.8 },
-        { "percentage": 45, "voltage": 14.6 },
-        { "percentage": 40, "voltage": 14.4 },
-        { "percentage": 35, "voltage": 14.2 },
-        { "percentage": 30, "voltage": 14.0 },
-        { "percentage": 25, "voltage": 13.8 },
-        { "percentage": 20, "voltage": 13.6 },
-        { "percentage": 15, "voltage": 13.4 },
-        { "percentage": 10, "voltage": 13.2 },
-        { "percentage": 5, "voltage": 12.8 },
-        { "percentage": 0, "voltage": 12.0 }
-      ],
-      "price": 24.99
-    },
-    {
       "id": "battery-4s-2200mah-80c",
       "name": "4S 2200mAh 80C",
       "capacity": 2200,
@@ -638,15 +475,6 @@
       "currentDraw": 45,
       "channels": 8,
       "price": 15.99
-    },
-    {
-      "id": "rx-frsky-xm",
-      "name": "FrSky XM+ RX",
-      "protocol": "SBUS",
-      "weight": 3.8,
-      "currentDraw": 100,
-      "channels": 16,
-      "price": 19.99
     }
   ]
 }

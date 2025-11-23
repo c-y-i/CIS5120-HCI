@@ -4,6 +4,7 @@ import { useBuild } from "../context/BuildContext";
 import "../styles/home.css";
 import logo from "../assets/logo.png";
 import componentsData from "../data/components.json";
+import BabylonViewer from "./BabylonViewer.jsx";
 import API_BASE from "../config/api";
 
 const BUILDS_ENDPOINT = `${API_BASE}/api/builds`;
@@ -117,6 +118,75 @@ export default function BuildPage() {
   const canAnalyze = selectedMotor && selectedPropeller && selectedBattery && selectedFrame;
   const canSave = !!canAnalyze;
 
+  // 3D model URLs state
+  const [modelUrls, setModelUrls] = useState([]); // legacy aggregated urls (non-motor components)
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState("");
+  const [motorModelUrl, setMotorModelUrl] = useState(null);
+  const [batteryModelUrl, setBatteryModelUrl] = useState(null);
+  const [propellerModelUrl, setPropellerModelUrl] = useState(null);
+  const [escModelUrl, setEscModelUrl] = useState(null);
+  const [fcModelUrl, setFcModelUrl] = useState(null);
+  const [receiverModelUrl, setReceiverModelUrl] = useState(null);
+  const [frameSizeMM, setFrameSizeMM] = useState(null);
+  const [resetKey, setResetKey] = useState(0);
+  const [clearedComponents, setClearedComponents] = useState([]);
+
+  // Helper: fetch list for category and match filename starting with component id
+  const fetchModelForComponent = async (category, componentId) => {
+    if (!componentId) return null;
+    try {
+      const res = await fetch(`${API_BASE}/api/models/list/${category}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      console.log(`[fetchModelForComponent] ${category}/${componentId}:`, data.models.map(m => m.filename));
+      const match = data.models.find(m => m.filename.toLowerCase().startsWith(componentId.toLowerCase()));
+      console.log(`[fetchModelForComponent] Match for ${componentId}:`, match?.filename || 'NONE');
+      return match ? `${API_BASE}/api/models/convert/${category}/${match.filename}?format=glb` : null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  // Build model URLs when key selections change
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoadingModels(true);
+      setModelError("");
+      const urls = [];
+      // Attempt frame, motor, battery (propellers often lack 3D model in assets)
+        const frameUrl = await fetchModelForComponent("frames", selectedFrame);
+        const motorUrl = await fetchModelForComponent("motors", selectedMotor);
+        const batteryUrl = await fetchModelForComponent("batteries", selectedBattery);
+        const escUrl = await fetchModelForComponent("escs", selectedESC);
+        const fcUrl = await fetchModelForComponent("flight_controllers", selectedFC);
+        const receiverUrl = await fetchModelForComponent("receivers", selectedReceiver);
+        // Propeller: use direct id prefix matching like other components
+        const propUrl = await fetchModelForComponent("propellers", selectedPropeller);
+        console.log('[BuildPage] Propeller URL:', propUrl, 'for ID:', selectedPropeller);
+        if (frameUrl) urls.push(frameUrl); // still aggregated
+        setMotorModelUrl(motorUrl);
+        setBatteryModelUrl(batteryUrl);
+        setPropellerModelUrl(propUrl);
+        setEscModelUrl(escUrl);
+        setFcModelUrl(fcUrl);
+        setReceiverModelUrl(receiverUrl);
+        // Determine frame size from componentsData
+        const frameObj = componentsData.frames.find(f => f.id === selectedFrame);
+        setFrameSizeMM(frameObj ? frameObj.size : null);
+      if (!cancelled) {
+        setModelUrls(urls);
+        if (!urls.length && (selectedFrame || selectedMotor || selectedBattery)) {
+          setModelError("No 3D models found for selected components.");
+        }
+        setLoadingModels(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [selectedFrame, selectedMotor, selectedBattery, selectedPropeller, selectedESC, selectedFC, selectedReceiver]);
+
   return (
     <div className={`app-container ${menuOpen ? "menu-open" : ""}`}>
       {message.text && (
@@ -140,9 +210,36 @@ export default function BuildPage() {
         </button>
       </div>
 
-      {/* Page Title */}
+      {/* Page Title & 3D Preview */}
       <div className="section-title" style={{ fontSize: "20px", fontWeight: "600" }}>
         Build Configuration
+      </div>
+      <div style={{ margin: "10px 0 24px" }}>
+        <div style={{ marginBottom: 6, fontSize: 12, color: "#666" }}>
+          3D Preview (all components when available)
+        </div>
+        <BabylonViewer
+          modelUrls={modelUrls}
+          motorUrl={motorModelUrl}
+          propellerUrl={propellerModelUrl}
+          batteryUrl={batteryModelUrl}
+          escUrl={escModelUrl}
+          fcUrl={fcModelUrl}
+          receiverUrl={receiverModelUrl}
+          frameSize={frameSizeMM}
+          groundClearance={4}
+          autoRotate
+          onLoaded={() => {}}
+          resetKey={resetKey}
+          clearedComponents={clearedComponents}
+          debug={false}
+        />
+        {loadingModels && (
+          <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Loading component models…</div>
+        )}
+        {modelError && !loadingModels && (
+          <div style={{ fontSize: 12, color: "#d9534f", marginTop: 4 }}>{modelError}</div>
+        )}
       </div>
 
       {/* Frame Selection */}
@@ -163,7 +260,15 @@ export default function BuildPage() {
             ))}
           </select>
           {selectedFrame && (
-            <button className="reset-btn" onClick={() => setSelectedFrame("")}>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setSelectedFrame("");
+                // remove frame model from aggregated urls
+                setModelUrls(prev => prev.filter(u => !/\/frames\//.test(u)));
+                setClearedComponents(c => [...new Set([...c, 'frame'])]);
+              }}
+            >
               Reset
             </button>
           )}
@@ -188,7 +293,14 @@ export default function BuildPage() {
             ))}
           </select>
           {selectedMotor && (
-            <button className="reset-btn" onClick={() => setSelectedMotor("")}>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setSelectedMotor("");
+                setMotorModelUrl(null);
+                setClearedComponents(c => [...new Set([...c, 'motor'])]);
+              }}
+            >
               Reset
             </button>
           )}
@@ -213,7 +325,14 @@ export default function BuildPage() {
             ))}
           </select>
           {selectedPropeller && (
-            <button className="reset-btn" onClick={() => setSelectedPropeller("")}>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setSelectedPropeller("");
+                setPropellerModelUrl(null);
+                setClearedComponents(c => [...new Set([...c, 'propeller'])]);
+              }}
+            >
               Reset
             </button>
           )}
@@ -233,7 +352,14 @@ export default function BuildPage() {
             ))}
           </select>
           {selectedESC && (
-            <button className="reset-btn" onClick={() => setSelectedESC("")}>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setSelectedESC("");
+                setEscModelUrl(null);
+                setClearedComponents(c => [...new Set([...c, 'esc'])]);
+              }}
+            >
               Reset
             </button>
           )}
@@ -253,7 +379,14 @@ export default function BuildPage() {
             ))}
           </select>
           {selectedFC && (
-            <button className="reset-btn" onClick={() => setSelectedFC("")}>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setSelectedFC("");
+                setFcModelUrl(null);
+                setClearedComponents(c => [...new Set([...c, 'flight_controller'])]);
+              }}
+            >
               Reset
             </button>
           )}
@@ -278,7 +411,14 @@ export default function BuildPage() {
             ))}
           </select>
           {selectedBattery && (
-            <button className="reset-btn" onClick={() => setSelectedBattery("")}>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setSelectedBattery("");
+                setBatteryModelUrl(null);
+                setClearedComponents(c => [...new Set([...c, 'battery'])]);
+              }}
+            >
               Reset
             </button>
           )}
@@ -303,7 +443,14 @@ export default function BuildPage() {
             ))}
           </select>
           {selectedReceiver && (
-            <button className="reset-btn" onClick={() => setSelectedReceiver("")}>
+            <button
+              className="reset-btn"
+              onClick={() => {
+                setSelectedReceiver("");
+                setReceiverModelUrl(null);
+                setClearedComponents(c => [...new Set([...c, 'receiver'])]);
+              }}
+            >
               Reset
             </button>
           )}
@@ -318,6 +465,34 @@ export default function BuildPage() {
       )}
 
       <div className="bottom-buttons">
+        <button
+          className="action-btn analysis"
+          onClick={() => {
+            // Clear all selections and trigger viewer reset
+            setSelectedFrame("");
+            setSelectedMotor("");
+            setSelectedPropeller("");
+            setSelectedESC("");
+            setSelectedFC("");
+            setSelectedBattery("");
+            setSelectedReceiver("");
+            // Clear all model URL states immediately so viewer sees empty set
+            setModelUrls([]);
+            setMotorModelUrl(null);
+            setBatteryModelUrl(null);
+            setPropellerModelUrl(null);
+            setEscModelUrl(null);
+            setFcModelUrl(null);
+            setReceiverModelUrl(null);
+            setClearedComponents([]);
+            setResetKey(k => k + 1);
+            setMessage({ type: "info", text: "Build reset." });
+            setTimeout(() => setMessage({ type: "", text: "" }), 1500);
+          }}
+          style={{ background: '#555' }}
+        >
+          ♻️ Reset All
+        </button>
         <button
           className="action-btn save"
           onClick={handleSave}

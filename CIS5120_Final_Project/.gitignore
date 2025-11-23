@@ -86,3 +86,6 @@ coverage/
 *.temp
 .cache/
 
+# Model conversion cache
+backend/assets-cache/
+
