@@ -128,7 +128,8 @@ export default function BuildPage() {
   const [escModelUrl, setEscModelUrl] = useState(null);
   const [fcModelUrl, setFcModelUrl] = useState(null);
   const [receiverModelUrl, setReceiverModelUrl] = useState(null);
-  const [frameSizeMM, setFrameSizeMM] = useState(null);
+  const [frameCornerPositions, setFrameCornerPositions] = useState([]);
+  const [motorMountingPoint, setMotorMountingPoint] = useState([0, 0, 0]);
   const [resetKey, setResetKey] = useState(0);
   const [clearedComponents, setClearedComponents] = useState([]);
 
@@ -165,18 +166,71 @@ export default function BuildPage() {
         // Propeller: use direct id prefix matching like other components
         const propUrl = await fetchModelForComponent("propellers", selectedPropeller);
         console.log('[BuildPage] Propeller URL:', propUrl, 'for ID:', selectedPropeller);
-        if (frameUrl) urls.push(frameUrl); // still aggregated
-        setMotorModelUrl(motorUrl);
-        setBatteryModelUrl(batteryUrl);
-        setPropellerModelUrl(propUrl);
-        setEscModelUrl(escUrl);
-        setFcModelUrl(fcUrl);
-        setReceiverModelUrl(receiverUrl);
-        // Determine frame size from componentsData
+        
+        // Only update URLs if they actually changed to prevent unnecessary re-renders
+        if (frameUrl) urls.push(frameUrl);
+        
+        // If selected motor has no model, try a visual fallback of same size
+        let effectiveMotorUrl = motorUrl;
+        let effectiveMotorId = selectedMotor;
+        if (!motorUrl && selectedMotor) {
+          const selectedMotorObj = componentsData.motors.find(m => m.id === selectedMotor);
+          if (selectedMotorObj?.size) {
+            const alt = componentsData.motors.find(m => m.size === selectedMotorObj.size && m.id !== selectedMotor);
+            if (alt) {
+              const altUrl = await fetchModelForComponent("motors", alt.id);
+              if (altUrl) {
+                console.warn(`[BuildPage] No 3D model for ${selectedMotor}; using ${alt.id} (${alt.size}) for rendering only.`);
+                effectiveMotorUrl = altUrl;
+                effectiveMotorId = alt.id;
+              }
+            }
+          }
+        }
+        setMotorModelUrl(prev => effectiveMotorUrl === prev ? prev : effectiveMotorUrl);
+        setBatteryModelUrl(prev => batteryUrl === prev ? prev : batteryUrl);
+        setPropellerModelUrl(prev => propUrl === prev ? prev : propUrl);
+        setEscModelUrl(prev => escUrl === prev ? prev : escUrl);
+        setFcModelUrl(prev => fcUrl === prev ? prev : fcUrl);
+        setReceiverModelUrl(prev => receiverUrl === prev ? prev : receiverUrl);
+        
+        // Extract frame corner positions
         const frameObj = componentsData.frames.find(f => f.id === selectedFrame);
-        setFrameSizeMM(frameObj ? frameObj.size : null);
+        if (frameObj) {
+          const corners = [
+            frameObj.upper_left_motor_position,
+            frameObj.upper_right_motor_position,
+            frameObj.lower_right_motor_position,
+            frameObj.lower_left_motor_position
+          ];
+          setFrameCornerPositions(corners);
+        } else {
+          setFrameCornerPositions([]);
+        }
+        
+        // Extract motor mounting point
+        const motorObj = componentsData.motors.find(m => m.id === selectedMotor);
+        if (motorObj && motorObj.mounting_point) {
+          setMotorMountingPoint(motorObj.mounting_point);
+        } else if (motorObj && motorObj.size) {
+          // Fallback: borrow mounting_point from another motor of the same size (e.g., 2207)
+          const altMount = componentsData.motors.find(m => m.size === motorObj.size && m.mounting_point);
+          if (altMount) {
+            console.warn(`[BuildPage] Missing mounting_point for ${motorObj.id}; using ${altMount.id} mounting_point as fallback.`);
+            setMotorMountingPoint(altMount.mounting_point);
+          } else {
+            setMotorMountingPoint([0, 0, 0]);
+          }
+        } else {
+          setMotorMountingPoint([0, 0, 0]);
+        }
       if (!cancelled) {
-        setModelUrls(urls);
+        // Only update modelUrls if the content actually changed
+        setModelUrls(prev => {
+          const urlsStr = JSON.stringify(urls);
+          const prevStr = JSON.stringify(prev);
+          return urlsStr === prevStr ? prev : urls;
+        });
         if (!urls.length && (selectedFrame || selectedMotor || selectedBattery)) {
           setModelError("No 3D models found for selected components.");
         }
@@ -221,18 +275,19 @@ export default function BuildPage() {
         <BabylonViewer
           modelUrls={modelUrls}
           motorUrl={motorModelUrl}
+          motorMountingPoint={motorMountingPoint}
+          frameCornerPositions={frameCornerPositions}
           propellerUrl={propellerModelUrl}
           batteryUrl={batteryModelUrl}
           escUrl={escModelUrl}
           fcUrl={fcModelUrl}
           receiverUrl={receiverModelUrl}
-          frameSize={frameSizeMM}
           groundClearance={4}
           autoRotate
           onLoaded={() => {}}
           resetKey={resetKey}
           clearedComponents={clearedComponents}
-          debug={false}
+          debug={true}
         />
         {loadingModels && (
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Loading component models…</div>

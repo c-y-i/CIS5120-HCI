@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, SceneLoader } from "@babylonjs/core";
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, SceneLoader, TransformNode } from "@babylonjs/core";
 import "@babylonjs/loaders"; // glTF/GLB loaders
 
 /**
@@ -9,8 +9,9 @@ import "@babylonjs/loaders"; // glTF/GLB loaders
  *  - modelUrls: string[] (multiple models to load)
  *  - autoRotate: boolean (auto spin models)
  *  - onLoaded: (count: number) => void callback after models loaded
- *  - frameSize: number (mm diagonal motor-to-motor) used to position motors
+ *  - frameCornerPositions: array of 4 Vector3-like objects [{x,y,z},...] for motor placement
  *  - motorUrl: string (source model for a single motor; cloned to 4 corners)
+ *  - motorMountingPoint: [x,y,z] offset from motor model origin to mounting point
  *  - batteryUrl, fcUrl, escUrl, receiverUrl: optional individual component URLs (center stacked)
  */
 const BabylonViewer = ({
@@ -18,8 +19,9 @@ const BabylonViewer = ({
   modelUrls = [],
   autoRotate = true,
   onLoaded,
-  frameSize,
+  frameCornerPositions = [], // array of 4 corner positions from frame data
   motorUrl,
+  motorMountingPoint = [0, 0, 0], // [x,y,z] offset from motor origin to mounting point
   batteryUrl,
   fcUrl,
   escUrl,
@@ -86,18 +88,60 @@ const BabylonViewer = ({
     };
   }, [autoRotate]);
 
-  // Utility: compute quad motor positions from diagonal (frameSize)
-  const computeMotorPositions = (diag) => {
-    if (!diag || diag <= 0) return [];
-    const side = diag / Math.sqrt(2); // side length of square
-    const h = side / 2;
-    // Y axis up; place motors slightly above ground (y=0)
-    return [
-      new Vector3( h, 0,  h),
-      new Vector3(-h, 0,  h),
-      new Vector3(-h, 0, -h),
-      new Vector3( h, 0, -h)
-    ];
+  // Convert frame corner positions to Vector3 and apply motor mounting point offset
+  const computeMotorPositions = (cornerPositions, mountingPoint) => {
+    if (!cornerPositions || cornerPositions.length !== 4) return [];
+    
+    // mountingPoint is the offset from motor origin to its mounting hole
+    // We need to subtract this offset so the mounting hole aligns with frame corner
+    const offset = new Vector3(-mountingPoint[0], -mountingPoint[1], -mountingPoint[2]);
+    
+    return cornerPositions.map(corner => {
+      const framePos = new Vector3(corner[0], corner[1], corner[2]);
+      return framePos.add(offset);
+    });
+  };
+
+  // Infer unit scale factor to convert mm positions to scene units based on frame size
+  const inferUnitScale = (scene, frameCorners) => {
+    try {
+      if (!scene || !frameCorners || frameCorners.length !== 4) return 1;
+      const frameMeshes = scene.meshes.filter(m => m.metadata?.componentType === 'frame' && !m.name.startsWith('__') && m.getBoundingInfo);
+      if (!frameMeshes.length) return 1;
+      // Compute scene-space bounding diagonal for frame
+      let minVec = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+      let maxVec = new Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+      frameMeshes.forEach(m => {
+        m.computeWorldMatrix(true);
+        const info = m.getBoundingInfo();
+        const bmin = info.boundingBox.minimumWorld;
+        const bmax = info.boundingBox.maximumWorld;
+        minVec.x = Math.min(minVec.x, bmin.x);
+        minVec.y = Math.min(minVec.y, bmin.y);
+        minVec.z = Math.min(minVec.z, bmin.z);
+        maxVec.x = Math.max(maxVec.x, bmax.x);
+        maxVec.y = Math.max(maxVec.y, bmax.y);
+        maxVec.z = Math.max(maxVec.z, bmax.z);
+      });
+      const sizeVec = maxVec.subtract(minVec);
+      const sceneDiag = Math.sqrt(sizeVec.x*sizeVec.x + sizeVec.y*sizeVec.y + sizeVec.z*sizeVec.z);
+      // Compute expected mm diagonal using opposite corners [0] and [2]
+      const a = frameCorners[0];
+      const c = frameCorners[2];
+      const dx = c[0] - a[0];
+      const dy = c[1] - a[1];
+      const dz = c[2] - a[2];
+      const mmDiag = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      if (mmDiag <= 0 || !isFinite(sceneDiag) || sceneDiag <= 0) return 1;
+      const scale = sceneDiag / mmDiag; // scene units per mm
+      // Log and clamp to reasonable range
+      if (scale < 1e-4 || scale > 1e4 || !isFinite(scale)) return 1;
+      console.log(`[BabylonViewer] Inferred unit scale (scene/mm): ${scale.toFixed(6)} (sceneDiag=${sceneDiag.toFixed(4)}, mmDiag=${mmDiag.toFixed(2)})`);
+      return scale;
+    } catch (e) {
+      console.warn('[BabylonViewer] Failed to infer unit scale:', e);
+      return 1;
+    }
   };
 
   // Helper: fit camera to current scene meshes
@@ -144,7 +188,7 @@ const BabylonViewer = ({
 
     camera.radius = desiredRadius;
 
-    // 4. ADJUST LIMITS DYNAMICALLY (Crucial Step)
+    // 4. adjust limit dynamically
     // Allow zooming much closer than the object size
     camera.lowerRadiusLimit = desiredRadius * 0.1; 
     // Don't allow zooming out to infinity
@@ -187,28 +231,68 @@ const BabylonViewer = ({
     const scene = sceneRef.current;
     if (!scene) return;
 
-    // Clear previous non-system meshes
-    // Dispose only if URL set changed
-    const currentUrlSet = JSON.stringify({
-      dynamic: modelUrls,
+    // Clear previous non-system meshes only when URLs actually change
+    // Track individual component URLs to avoid clearing everything when only positioning changes
+    const currentUrls = {
       motorUrl,
       batteryUrl,
       fcUrl,
       escUrl,
       receiverUrl,
-      propellerUrl
-    });
+      propellerUrl,
+      frameUrl: modelUrls[0] || null
+    };
+    
+    const previousUrls = previousUrlsRef.current || {};
+    
     // Force dispose if resetKey changed explicitly
     const resetTriggered = resetKey !== (scene.__lastResetKey || 0);
     if (resetTriggered) {
       scene.__lastResetKey = resetKey;
     }
 
-    if (previousUrlsRef.current !== currentUrlSet || resetTriggered) {
+    // Only dispose meshes for components whose URLs actually change
+    if (resetTriggered) {
       const meshesToDispose = scene.meshes.filter(m => !m.name.startsWith("__"));
       meshesToDispose.forEach(m => m.dispose());
-      previousUrlsRef.current = currentUrlSet;
+    } else {
+      // Selective disposal based on which URLs changed
+      Object.keys(currentUrls).forEach(key => {
+        if (currentUrls[key] !== previousUrls[key]) {
+          console.log(`[BabylonViewer] URL changed for ${key}: ${previousUrls[key]} -> ${currentUrls[key]}`);
+          // Map key to a normalized component type
+          const keyToType = {
+            motorUrl: 'motor',
+            batteryUrl: 'battery',
+            fcUrl: 'flight_controller',
+            escUrl: 'esc',
+            receiverUrl: 'receiver',
+            propellerUrl: 'propeller',
+            frameUrl: 'frame'
+          };
+          const componentType = keyToType[key] || key.replace('Url','');
+
+          // Dispose meshes tagged with this component type; fallback to name heuristic
+          scene.meshes.forEach(m => {
+            const tagged = m.metadata?.componentType === componentType;
+            const byName = m.name.toLowerCase().includes(componentType) || m.name.startsWith(`${componentType}_`);
+            if (!m.name.startsWith("__") && (tagged || byName)) {
+              console.log(`[BabylonViewer] Disposing ${m.name} due to ${key} change`);
+              m.dispose();
+            }
+          });
+          // Also dispose transform roots for this component type
+          (scene.transformNodes || []).forEach(n => {
+            if (n.metadata?.componentType === componentType) {
+              console.log(`[BabylonViewer] Disposing transform root ${n.name} for ${componentType}`);
+              n.dispose();
+            }
+          });
+        }
+      });
     }
+    
+    previousUrlsRef.current = currentUrls;
     setLoadedCount(0);
 
     const dynamicUrls = modelUrls.length ? [...modelUrls] : (modelUrl ? [modelUrl] : []);
@@ -254,48 +338,47 @@ const BabylonViewer = ({
       const ok = await preflight(url);
       if (!ok) return;
       pendingLoadsRef.current += 1;
-      const meshCountBefore = scene.meshes.length;
-      SceneLoader.Append("", url, scene, () => {
-        const newMeshes = scene.meshes.slice(meshCountBefore);
-        
-        // Mark all new meshes for auto-rotation
-        newMeshes.forEach(m => { 
-          if (!m.name.startsWith("__")) {
-            m.metadata = { ...(m.metadata || {}), autoSpin: true };
+      SceneLoader.ImportMeshAsync(null, "", url, scene)
+        .then((result) => {
+          // result.meshes contains ONLY meshes imported for this URL
+          const newMeshes = result.meshes.filter(m => !m.name.startsWith("__"));
+
+          newMeshes.forEach(m => {
+            m.metadata = { ...(m.metadata || {}), autoSpin: true, sourceUrl: url };
             if (componentType) m.metadata.componentType = componentType;
-            m.metadata.sourceUrl = url;
+          });
+
+          setLoadedCount(prev => {
+            const next = prev + 1;
+            if (onLoaded) onLoaded(next);
+            return next;
+          });
+
+          if (newMeshes.length === 0) {
+            markStatus(url, 'error', 'No meshes loaded');
+          } else {
+            markStatus(url, 'success', `${newMeshes.length} mesh(es)`);
+          }
+
+          if (cb) cb(newMeshes);
+        })
+        .catch((e) => {
+          console.error("Failed to load model:", url, e);
+          markStatus(url, 'error', (e && e.message) || 'Load failed');
+        })
+        .finally(() => {
+          pendingLoadsRef.current -= 1;
+          if (pendingLoadsRef.current === 0) {
+            // scheduleNormalization();
           }
         });
-        
-        setLoadedCount(prev => {
-          const next = prev + 1;
-          if (onLoaded) onLoaded(next);
-          return next;
-        });
-        
-        if (newMeshes.length === 0) {
-          markStatus(url, 'error', 'No meshes loaded');
-        } else {
-          markStatus(url, 'success', `${newMeshes.length} mesh(es)`);
-        }
-        if (cb) cb(newMeshes);
-        // After each successful load schedule normalization & fit
-        pendingLoadsRef.current -= 1;
-        if (pendingLoadsRef.current === 0) {
-          // scheduleNormalization();
-        }
-      }, null, (s, msg, exception) => {
-        console.error("Failed to load model:", url, exception || msg);
-        markStatus(url, 'error', (exception && exception.message) || msg || 'Load failed');
-        pendingLoadsRef.current -= 1;
-        if (pendingLoadsRef.current === 0) {
-          // scheduleNormalization();
-        }
-      });
     };
 
     // Load non-motor components first (centered)
-    dynamicUrls.forEach(url => loadSingle(url, null));
+    dynamicUrls.forEach(url => {
+      const compType = (url === currentUrls.frameUrl) ? 'frame' : undefined;
+      loadSingle(url, null, compType);
+    });
 
     // Dynamic vertical stacking: compress gaps when some components missing
     const stackSpacing = 3; // mm spacing between stacked components
@@ -312,63 +395,107 @@ const BabylonViewer = ({
       }, typeMap[url]);
     });
 
-    const motorPositions = frameSize ? computeMotorPositions(frameSize) : [];
-
-    // Load motor, then clone to four corners (if frame selected)
-    if (motorUrl && motorPositions.length) {
+    // Load motors at frame corner positions with mounting point alignment
+    const motorPositions = computeMotorPositions(frameCornerPositions, motorMountingPoint);
+    console.log('[BabylonViewer] Motor positions computed:', motorPositions.map(p => `(${p.x}, ${p.y}, ${p.z})`));
+    console.log('[BabylonViewer] Frame corners:', frameCornerPositions);
+    console.log('[BabylonViewer] Mounting point:', motorMountingPoint);
+    console.log('[BabylonViewer] motorUrl:', motorUrl);
+    console.log('[BabylonViewer] Will load motors?', motorUrl && motorPositions.length === 4);
+    if (motorUrl && motorPositions.length === 4) {
       loadSingle(motorUrl, (loadedMeshes) => {
-        // Find root-level meshes (those without parents)
-        const rootMeshes = loadedMeshes.filter(m => !m.parent && !m.name.startsWith("__"));
-        
-        if (rootMeshes.length === 0) return;
-        
-        // Position first motor at first position
-        rootMeshes.forEach(m => m.position = motorPositions[0]);
-        
-        // Clone for remaining positions
-        for (let i = 1; i < motorPositions.length; i++) {
-          rootMeshes.forEach(mesh => {
-            const clone = mesh.clone(`motor_${i}_${mesh.name}`, null);
-            if (clone) {
-              clone.position = motorPositions[i];
-              clone.metadata = { ...(clone.metadata || {}), autoSpin: true };
+        const meshesToUse = loadedMeshes.filter(m => !m.name.startsWith("__"));
+        console.log('[BabylonViewer] Motor meshes loaded:', meshesToUse.length);
+        if (meshesToUse.length === 0) return;
+
+        // Determine unit scale between mm (corner data) and scene units (GLB)
+        const unitScale = inferUnitScale(scene, frameCornerPositions);
+        const scaledPositions = motorPositions.map(p => p.scale(unitScale));
+
+        // Create a TransformNode per motor instance and parent all meshes to it
+        const createMotorInstance = (idx, position) => {
+          const root = new TransformNode(`motor_${idx}_root`, scene);
+          root.position = position.clone();
+          root.metadata = { componentType: 'motor' };
+
+          meshesToUse.forEach((mesh) => {
+            const inst = idx === 0 ? mesh : mesh.clone(`motor_${idx}_${mesh.name}`);
+            if (!inst) {
+              console.error(`[BabylonViewer] Failed to instantiate motor ${idx} from ${mesh.name}`);
+              return;
+            }
+            inst.parent = root;
+            inst.metadata = { ...(inst.metadata || {}), componentType: 'motor' };
+            if (idx > 0) {
+              console.log(`[BabylonViewer] Cloned motor ${idx} mesh: ${inst.name}`);
             }
           });
+
+          return root;
+        };
+
+        // First instance uses original meshes
+        const firstRoot = createMotorInstance(0, scaledPositions[0]);
+        console.log('[BabylonViewer] Positioned first motor at:', firstRoot.position);
+
+        // Remaining instances clone meshes under separate roots
+        for (let i = 1; i < scaledPositions.length; i++) {
+          createMotorInstance(i, scaledPositions[i]);
         }
-        // normalization triggered once all loads finished above
+
+        setTimeout(() => {
+          const allMotorRoots = (scene.transformNodes || []).filter(n => n.name.includes('motor_') && n.metadata?.componentType === 'motor');
+          console.log(`[BabylonViewer] Total motor roots in scene: ${allMotorRoots.length}`);
+          allMotorRoots.forEach(n => {
+            console.log(`  - ${n.name} at (${n.position.x.toFixed(2)}, ${n.position.y.toFixed(2)}, ${n.position.z.toFixed(2)})`);
+          });
+        }, 400);
       }, 'motor');
     }
 
-    // Load propeller - clone with motors if available, otherwise load standalone
-    if (propellerUrl) {
-      if (motorPositions.length) {
-        // Clone above each motor
-        loadSingle(propellerUrl, (loadedMeshes) => {
-          const rootMeshes = loadedMeshes.filter(m => !m.parent && !m.name.startsWith("__"));
-          
-          if (rootMeshes.length === 0) return;
-          
-          // Position first propeller above first motor
-          const propOffset = new Vector3(0, 2, 0);
-          rootMeshes.forEach(m => m.position = motorPositions[0].add(propOffset));
-          
-          // Clone for remaining positions
-          for (let i = 1; i < motorPositions.length; i++) {
-            rootMeshes.forEach(mesh => {
-              const clone = mesh.clone(`prop_${i}_${mesh.name}`, null);
-              if (clone) {
-                clone.position = motorPositions[i].add(propOffset);
-                clone.metadata = { ...(clone.metadata || {}), autoSpin: true };
-              }
-            });
-          }
-        }, 'propeller');
-      } else {
-        // Load single propeller at center when no frame/motors
-        loadSingle(propellerUrl, null, 'propeller');
-      }
+    // Load propellers: clone to four corners, positioned above motors (or frame corners if motors absent)
+    if (propellerUrl && frameCornerPositions.length === 4) {
+      loadSingle(propellerUrl, (loadedMeshes) => {
+        const meshesToUse = loadedMeshes.filter(m => !m.name.startsWith("__"));
+        if (meshesToUse.length === 0) return;
+
+        // Infer unit scale and compute base positions
+        const unitScale = inferUnitScale(scene, frameCornerPositions);
+        const motorRoots = (scene.transformNodes || []).filter(n => n.metadata?.componentType === 'motor')
+                             .sort((a,b) => a.name.localeCompare(b.name));
+
+        const propLiftMm = 6; // ~6mm above motor origin as a safe default
+        const lift = unitScale * propLiftMm;
+
+        let propPositions;
+        if (motorRoots.length >= 4) {
+          propPositions = motorRoots.slice(0,4).map(r => new Vector3(r.position.x, r.position.y + lift, r.position.z));
+        } else {
+          // Fallback to frame corners (scaled) if motors not present
+          propPositions = frameCornerPositions.map(c => new Vector3(c[0]*unitScale, c[1]*unitScale + lift, c[2]*unitScale));
+        }
+
+        const createPropInstance = (idx, position) => {
+          const root = new TransformNode(`prop_${idx}_root`, scene);
+          root.position = position.clone();
+          root.metadata = { componentType: 'propeller' };
+          meshesToUse.forEach((mesh) => {
+            const inst = idx === 0 ? mesh : mesh.clone(`prop_${idx}_${mesh.name}`);
+            if (!inst) return;
+            inst.parent = root;
+            inst.metadata = { ...(inst.metadata || {}), componentType: 'propeller' };
+          });
+          return root;
+        };
+
+        const firstRoot = createPropInstance(0, propPositions[0]);
+        for (let i = 1; i < 4; i++) {
+          createPropInstance(i, propPositions[i]);
+        }
+      }, 'propeller');
     }
-  }, [modelUrl, modelUrls, frameSize, motorUrl, batteryUrl, fcUrl, escUrl, receiverUrl, propellerUrl, onLoaded, groundClearance, resetKey, clearedComponents]);
+
+  }, [modelUrl, modelUrls, frameCornerPositions, motorUrl, motorMountingPoint, batteryUrl, fcUrl, escUrl, receiverUrl, propellerUrl, onLoaded, groundClearance, resetKey, clearedComponents]);
 
   return (
     <div style={{ width: "100%", height: "400px", border: "1px solid #222", borderRadius: 8, overflow: "hidden", background: "#111", position:'relative' }}>
