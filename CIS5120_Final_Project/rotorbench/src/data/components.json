@@ -11,7 +11,8 @@
         "max": 15.0
       },
       "size": "1104",
-      "price": 16.99
+      "price": 16.99,
+      "mounting_point": [-39.11, -21.23, 1000]
     },
     {
       "id": "motor-1504.5-4000kv",
@@ -24,7 +25,8 @@
         "max": 14.8
       },
       "size": "1504.5",
-      "price": 20.99
+      "price": 20.99,
+      "mounting_point" : [0, 10.36, 3.2]
     },
     {
       "id": "motor-1804-2800kv",
@@ -37,7 +39,8 @@
         "max": 14.8
       },
       "size": "1804",
-      "price": 22.99
+      "price": 22.99,
+      "mounting_point" : [0, 4.04, 9.27]
     },
     {
       "id": "motor-2207-1750kv",
@@ -50,7 +53,8 @@
         "max": 25.2
       },
       "size": "2207",
-      "price": 18.99
+      "price": 18.99,
+      "mounting_point" : [0, 25.15, 0]
     },
     {
       "id": "motor-2207-1850kv",
@@ -76,7 +80,8 @@
         "max": 22.2
       },
       "size": "2306",
-      "price": 16.99
+      "price": 16.99,
+      "mounting_point" : [0, 17.2, 0]
     }
   ],
   "propellers": [
@@ -274,7 +279,11 @@
       "motorCount": 4,
       "maxPropSize": 5.1,
       "stackHeight": 30,
-      "price": 34.99
+      "price": 34.99,
+      "upper_left_motor_position": [ -86.01, 4.75, -70.74 ],
+      "upper_right_motor_position": [ 86.01, 4.75, -70.74 ],
+      "lower_right_motor_position": [ 86.01, 4.75, 70.74 ],
+      "lower_left_motor_position": [ -86.01, 4.75, 70.74 ]
     },
     {
       "id": "frame-5inch-225mm",
@@ -285,7 +294,11 @@
       "motorCount": 4,
       "maxPropSize": 5.1,
       "stackHeight": 30,
-      "price": 39.99
+      "price": 39.99,
+      "upper_left_motor_position": [ -86.01, 4.75, -70.74 ],
+      "upper_right_motor_position": [ 86.01, 4.75, -70.74 ],
+      "lower_right_motor_position": [ 86.01, 4.75, 70.74 ],
+      "lower_left_motor_position": [ -86.01, 4.75, 70.74 ]
     },
     {
       "id": "frame-5inch-230mm",
@@ -296,7 +309,11 @@
       "motorCount": 4,
       "maxPropSize": 5.1,
       "stackHeight": 30,
-      "price": 42.99
+      "price": 42.99,
+      "upper_left_motor_position": [ -88.95, 2.5, -71.33 ],
+      "upper_right_motor_position": [ 88.95, 2.5, -71.33 ],
+      "lower_right_motor_position": [ 88.95, 2.5, 71.33 ],
+      "lower_left_motor_position": [ -88.95, 2.5, 71.33 ]
     }
   ],
   "batteries": [
