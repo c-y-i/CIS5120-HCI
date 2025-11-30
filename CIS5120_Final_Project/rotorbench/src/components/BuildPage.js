@@ -135,6 +135,29 @@ export default function BuildPage() {
   const [showDebugStatus, setShowDebugStatus] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState("#2d2d44");
 
+  // Whenever a component is selected again, ensure it is removed from the cleared list
+  useEffect(() => {
+    const selectionToType = [
+      { value: selectedFrame, type: "frame" },
+      { value: selectedMotor, type: "motor" },
+      { value: selectedPropeller, type: "propeller" },
+      { value: selectedESC, type: "esc" },
+      { value: selectedFC, type: "flight_controller" },
+      { value: selectedBattery, type: "battery" },
+      { value: selectedReceiver, type: "receiver" },
+    ];
+
+    setClearedComponents(prev => {
+      let changed = false;
+      const next = prev.filter(type => {
+        const hasSelection = selectionToType.some(entry => entry.type === type && entry.value);
+        if (hasSelection) changed = true;
+        return !hasSelection;
+      });
+      return changed ? next : prev;
+    });
+  }, [selectedFrame, selectedMotor, selectedPropeller, selectedESC, selectedFC, selectedBattery, selectedReceiver]);
+
   // Helper: fetch list for category and match filename starting with component id
   const fetchModelForComponent = async (category, componentId) => {
     if (!componentId) return null;
@@ -153,27 +176,28 @@ export default function BuildPage() {
 
   // Build model URLs when key selections change
   useEffect(() => {
+    const nonFrameSelected = selectedMotor || selectedPropeller || selectedESC || selectedFC || selectedBattery || selectedReceiver;
+
+    // Block rendering entirely until a frame is chosen.
+    if (!selectedFrame) {
+      setModelUrls([]);
+      setMotorModelUrl(null);
+      setBatteryModelUrl(null);
+      setPropellerModelUrl(null);
+      setEscModelUrl(null);
+      setFcModelUrl(null);
+      setReceiverModelUrl(null);
+      setFrameCornerPositions([]);
+      setMotorMountingPoint([0, 0, 0]);
+      setLoadingModels(false);
+      setModelError(nonFrameSelected ? "Please select a frame first." : "");
+      return;
+    }
+
     let cancelled = false;
     const load = async () => {
       setLoadingModels(true);
       setModelError("");
-
-      // Frame is the anchor for all other components. Without it, block rendering entirely.
-      if (!selectedFrame) {
-        setModelUrls([]);
-        setMotorModelUrl(null);
-        setBatteryModelUrl(null);
-        setPropellerModelUrl(null);
-        setEscModelUrl(null);
-        setFcModelUrl(null);
-        setReceiverModelUrl(null);
-        const anythingSelected = selectedMotor || selectedPropeller || selectedESC || selectedFC || selectedBattery || selectedReceiver;
-        if (anythingSelected) {
-          setModelError("Please select a frame first.");
-        }
-        setLoadingModels(false);
-        return;
-      }
       const urls = [];
       // Attempt frame, motor, battery (propellers often lack 3D model in assets)
         const frameUrl = await fetchModelForComponent("frames", selectedFrame);

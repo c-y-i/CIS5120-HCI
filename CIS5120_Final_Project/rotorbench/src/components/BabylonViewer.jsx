@@ -266,6 +266,12 @@ const BabylonViewer = ({
     const scene = sceneRef.current;
     if (!scene) return;
 
+    // Each dependency change starts a new load session so late async loads from
+    // previous selections can be ignored safely.
+    const loadSession = Symbol('loadSession');
+    scene.__currentLoadSession = loadSession;
+    pendingLoadsRef.current = 0;
+
     // Clear previous non-system meshes only when URLs actually change
     // Track individual component URLs to avoid clearing everything when only positioning changes
     const currentUrls = {
@@ -372,6 +378,7 @@ const BabylonViewer = ({
     }
 
     const markStatus = (url, status, info) => {
+      if (scene.__currentLoadSession !== loadSession) return;
       setLoadStatuses(prev => ({ ...prev, [url]: { status, info }}));
     };
 
@@ -407,6 +414,13 @@ const BabylonViewer = ({
       const normalizedUrl = normalizeModelUrl(url);
       SceneLoader.ImportMeshAsync(null, "", normalizedUrl, scene)
         .then((result) => {
+          if (scene.__currentLoadSession !== loadSession) {
+            result.meshes.forEach(m => {
+              if (!m.name.startsWith("__")) m.dispose();
+            });
+            return;
+          }
+
           // result.meshes contains ONLY meshes imported for this URL
           const newMeshes = result.meshes.filter(m => !m.name.startsWith("__"));
 
@@ -431,12 +445,16 @@ const BabylonViewer = ({
         })
         .catch((e) => {
           console.error("Failed to load model:", normalizedUrl, "(original:", url, ")", e);
-          markStatus(url, 'error', (e && e.message) || 'Load failed');
+          if (scene.__currentLoadSession === loadSession) {
+            markStatus(url, 'error', (e && e.message) || 'Load failed');
+          }
         })
         .finally(() => {
-          pendingLoadsRef.current -= 1;
-          if (pendingLoadsRef.current === 0) {
-            // scheduleNormalization();
+          if (scene.__currentLoadSession === loadSession) {
+            pendingLoadsRef.current -= 1;
+            if (pendingLoadsRef.current === 0) {
+              // scheduleNormalization();
+            }
           }
         });
     };
