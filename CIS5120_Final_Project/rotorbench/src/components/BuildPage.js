@@ -132,6 +132,8 @@ export default function BuildPage() {
   const [motorMountingPoint, setMotorMountingPoint] = useState([0, 0, 0]);
   const [resetKey, setResetKey] = useState(0);
   const [clearedComponents, setClearedComponents] = useState([]);
+  const [showDebugStatus, setShowDebugStatus] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState("#2d2d44");
 
   // Helper: fetch list for category and match filename starting with component id
   const fetchModelForComponent = async (category, componentId) => {
@@ -303,6 +305,121 @@ export default function BuildPage() {
         <div style={{ marginBottom: 6, fontSize: 12, color: "#666" }}>
           3D Preview (all components when available)
         </div>
+        
+        {/* Component Visibility Controls */}
+        {(selectedFrame || selectedMotor || selectedBattery) && (
+          <div style={{
+            padding: "8px",
+            background: "#f8f9fa",
+            borderRadius: "8px",
+            marginBottom: "8px",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px",
+            fontSize: "11px"
+          }}>
+            <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
+              <span style={{ color: "#666", fontSize: "10px" }}>
+                Hide components:
+              </span>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <label style={{ fontSize: "10px", color: "#666", display: "flex", alignItems: "center", gap: "4px" }}>
+                  Background:
+                  <select
+                    value={backgroundColor}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    style={{
+                      padding: "4px 6px",
+                      borderRadius: "6px",
+                      border: "1px solid #ccc",
+                      fontSize: "10px",
+                      background: "#fff",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <option value="#2d2d44">Dark Gray</option>
+                    <option value="#111111">Black</option>
+                    <option value="#1a1a2e">Dark Blue</option>
+                    <option value="#2c3e50">Slate Blue</option>
+                    <option value="#34495e">Charcoal</option>
+                    <option value="#ffffff">White</option>
+                    <option value="#f5f5f5">Light Gray</option>
+                    <option value="#e3f2fd">Light Blue</option>
+                    <option value="#fff3e0">Light Orange</option>
+                    <option value="#f1f8e9">Light Green</option>
+                    <option value="#fce4ec">Light Pink</option>
+                    <option value="#e8eaf6">Lavender</option>
+                    <option value="#fff9c4">Light Yellow</option>
+                    <option value="#e0f2f1">Mint</option>
+                    <option value="#263238">Dark Teal</option>
+                    <option value="#3e2723">Dark Brown</option>
+                    <option value="#1b5e20">Dark Green</option>
+                  </select>
+                </label>
+                <button
+                  onClick={() => setShowDebugStatus(!showDebugStatus)}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: "12px",
+                    border: `1px solid ${showDebugStatus ? '#2196F3' : '#ccc'}`,
+                    background: showDebugStatus ? '#e3f2fd' : '#fff',
+                    color: showDebugStatus ? '#1976d2' : '#666',
+                    cursor: "pointer",
+                    fontSize: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}
+                  title={showDebugStatus ? "Hide load status" : "Show load status"}
+                >
+                  <span>📊</span>
+                  <span>{showDebugStatus ? "Hide Status" : "Show Status"}</span>
+                </button>
+              </div>
+            </div>
+            {[
+              { id: 'frame', label: 'Frame', icon: '🖼️', has: selectedFrame },
+              { id: 'motor', label: 'Motors', icon: '⚙️', has: selectedMotor },
+              { id: 'propeller', label: 'Props', icon: '🔄', has: selectedPropeller },
+              { id: 'battery', label: 'Battery', icon: '🔋', has: selectedBattery },
+              { id: 'flight_controller', label: 'FC', icon: '🖥️', has: selectedFC },
+              { id: 'esc', label: 'ESC', icon: '⚡', has: selectedESC },
+              { id: 'receiver', label: 'RX', icon: '📡', has: selectedReceiver }
+            ].filter(comp => comp.has).map(comp => {
+              const isHidden = clearedComponents.includes(comp.id);
+              return (
+                <button
+                  key={comp.id}
+                  onClick={() => {
+                    setClearedComponents(prev => 
+                      isHidden 
+                        ? prev.filter(c => c !== comp.id)
+                        : [...prev, comp.id]
+                    );
+                  }}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: "12px",
+                    border: `1px solid ${isHidden ? '#ccc' : '#4CAF50'}`,
+                    background: isHidden ? '#fff' : '#e8f5e9',
+                    color: isHidden ? '#999' : '#2e7d32',
+                    cursor: "pointer",
+                    fontSize: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    opacity: isHidden ? 0.6 : 1
+                  }}
+                >
+                  <span>{comp.icon}</span>
+                  <span>{comp.label}</span>
+                  {isHidden && <span style={{ marginLeft: "2px" }}>👁️‍🗨️</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        
         <BabylonViewer
           modelUrls={modelUrls}
           motorUrl={motorModelUrl}
@@ -318,7 +435,8 @@ export default function BuildPage() {
           onLoaded={() => {}}
           resetKey={resetKey}
           clearedComponents={clearedComponents}
-          debug={true}
+          debug={showDebugStatus}
+          backgroundColor={backgroundColor}
         />
         {loadingModels && (
           <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Loading component models…</div>
