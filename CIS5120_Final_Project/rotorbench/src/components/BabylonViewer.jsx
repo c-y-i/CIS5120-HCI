@@ -255,6 +255,10 @@ const BabylonViewer = ({
     if (resetTriggered) {
       const meshesToDispose = scene.meshes.filter(m => !m.name.startsWith("__"));
       meshesToDispose.forEach(m => m.dispose());
+      const nodesToDispose = (scene.transformNodes || []).filter(n => !n.name.startsWith("__"));
+      nodesToDispose.forEach(n => n.dispose());
+      pendingLoadsRef.current = 0; // drop any stale load bookkeeping on hard reset
+      setLoadStatuses({});
     } else {
       // Selective disposal based on which URLs changed
       Object.keys(currentUrls).forEach(key => {
@@ -296,6 +300,24 @@ const BabylonViewer = ({
     setLoadedCount(0);
 
     const dynamicUrls = modelUrls.length ? [...modelUrls] : (modelUrl ? [modelUrl] : []);
+
+    const activeUrls = new Set([
+      ...dynamicUrls,
+      motorUrl,
+      batteryUrl,
+      fcUrl,
+      escUrl,
+      receiverUrl,
+      propellerUrl
+    ].filter(Boolean));
+    setLoadStatuses(prev => {
+      const next = {};
+      Object.entries(prev).forEach(([url, info]) => {
+        if (activeUrls.has(url)) next[url] = info;
+      });
+      if (Object.keys(next).length === Object.keys(prev).length) return prev;
+      return next;
+    });
 
     // Remove meshes for cleared component types before any new loads
     if (clearedComponents.length) {

@@ -155,6 +155,23 @@ export default function BuildPage() {
     const load = async () => {
       setLoadingModels(true);
       setModelError("");
+
+      // Frame is the anchor for all other components. Without it, block rendering entirely.
+      if (!selectedFrame) {
+        setModelUrls([]);
+        setMotorModelUrl(null);
+        setBatteryModelUrl(null);
+        setPropellerModelUrl(null);
+        setEscModelUrl(null);
+        setFcModelUrl(null);
+        setReceiverModelUrl(null);
+        const anythingSelected = selectedMotor || selectedPropeller || selectedESC || selectedFC || selectedBattery || selectedReceiver;
+        if (anythingSelected) {
+          setModelError("Please select a frame first.");
+        }
+        setLoadingModels(false);
+        return;
+      }
       const urls = [];
       // Attempt frame, motor, battery (propellers often lack 3D model in assets)
         const frameUrl = await fetchModelForComponent("frames", selectedFrame);
@@ -231,9 +248,23 @@ export default function BuildPage() {
           const prevStr = JSON.stringify(prev);
           return urlsStr === prevStr ? prev : urls;
         });
-        if (!urls.length && (selectedFrame || selectedMotor || selectedBattery)) {
+
+        const hasAnyRenderable = Boolean(
+          urls.length ||
+          effectiveMotorUrl ||
+          batteryUrl ||
+          escUrl ||
+          fcUrl ||
+          receiverUrl ||
+          propUrl
+        );
+
+        if (!hasAnyRenderable && (selectedFrame || selectedMotor || selectedPropeller || selectedESC || selectedFC || selectedBattery || selectedReceiver)) {
           setModelError("No 3D models found for selected components.");
+        } else {
+          setModelError("");
         }
+
         setLoadingModels(false);
       }
     };
