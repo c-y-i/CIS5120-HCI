@@ -426,12 +426,9 @@ async def convert_model(
         output_format=format
     )
     
-    if error:
-        logger.error(f"Conversion failed: {error}")
-        raise HTTPException(status_code=404, detail=error)
-    
-    if not converted_path or not converted_path.exists():
-        raise HTTPException(status_code=500, detail="Conversion failed")
+    if error or not converted_path or not converted_path.exists():
+        # The converter should have already tried placeholders as last resort
+        raise HTTPException(status_code=404, detail=error or "Conversion failed")
     
     # Determine media type
     media_type = "model/gltf-binary" if format == "glb" else "model/gltf+json"

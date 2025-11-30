@@ -333,12 +333,22 @@ const BabylonViewer = ({
       }
     };
 
+    // Normalize URL to ensure Babylon.js recognizes it as GLB
+    // Replace .step/.stp/.sldprt extensions with .glb in the URL for Babylon.js
+    const normalizeModelUrl = (url) => {
+      if (!url) return url;
+      // Replace file extensions that Babylon.js might misinterpret
+      return url.replace(/\.(step|stp|sldprt)(\?|$)/gi, '.glb$2');
+    };
+
     const loadSingle = async (url, cb, componentType) => {
       if (!url) return;
       const ok = await preflight(url);
       if (!ok) return;
       pendingLoadsRef.current += 1;
-      SceneLoader.ImportMeshAsync(null, "", url, scene)
+      // Normalize URL so Babylon.js recognizes it as GLB
+      const normalizedUrl = normalizeModelUrl(url);
+      SceneLoader.ImportMeshAsync(null, "", normalizedUrl, scene)
         .then((result) => {
           // result.meshes contains ONLY meshes imported for this URL
           const newMeshes = result.meshes.filter(m => !m.name.startsWith("__"));
@@ -363,7 +373,7 @@ const BabylonViewer = ({
           if (cb) cb(newMeshes);
         })
         .catch((e) => {
-          console.error("Failed to load model:", url, e);
+          console.error("Failed to load model:", normalizedUrl, "(original:", url, ")", e);
           markStatus(url, 'error', (e && e.message) || 'Load failed');
         })
         .finally(() => {

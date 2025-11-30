@@ -50,6 +50,40 @@ curl http://localhost:8000/api/models/list/motors
 - Batch conversion support
 - Organized by component category
 
+### STEP File Conversion (Without FreeCAD)
+
+The backend supports STEP file conversion without requiring FreeCAD. Here are your options:
+
+#### Option 1: Install cascadio (Recommended - Easiest)
+```bash
+pip install cascadio>=0.0.17
+```
+This lightweight Python library provides STEP file support. After installation, restart the server.
+
+#### Option 2: Pre-convert STEP files to GLB
+You can pre-convert all STEP files to GLB format, and the backend will automatically use them:
+
+1. **Using the pre-conversion script** (if you have cascadio or pythonocc-core):
+   ```bash
+   python preconvert_models.py
+   ```
+   This will create `.glb` files alongside your `.step` files.
+
+2. **Using online converters** (no installation needed):
+   - Visit https://imagetostl.com/convert/file/step/to/glb
+   - Upload each STEP file and download the GLB version
+   - Place the GLB files in the same directory as the STEP files with the same name (e.g., `frame-5inch-220mm.glb` next to `frame-5inch-220mm.step`)
+
+3. **Using other tools**:
+   - CAD Exchanger (desktop app)
+   - Blender (import STEP, export GLB)
+   - Any other STEP to GLB converter
+
+The backend will automatically detect and use pre-converted GLB files if they exist alongside STEP files.
+
+#### Option 3: Use placeholder meshes (Default)
+If no conversion backend is available and no pre-converted files exist, the backend will create simple placeholder meshes so the frontend can still render something (instead of 404 errors).
+
 ### Documentation
 - **API Documentation**: See `MODEL_CONVERSION_API.md` for complete API reference
 - **Quick Start**: See `../QUICK_START_MODELS.md` for frontend integration examples
