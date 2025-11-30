@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, SceneLoader, TransformNode } from "@babylonjs/core";
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, SceneLoader, TransformNode, Color3 } from "@babylonjs/core";
 import "@babylonjs/loaders"; // glTF/GLB loaders
 
 /**
@@ -30,7 +30,8 @@ const BabylonViewer = ({
   groundClearance = 2, // millimeters to lift lowest point above ground
   resetKey = 0,
   debug = false,
-  clearedComponents = [] // array of component type strings to remove (e.g. ['frame','motor'])
+  clearedComponents = [], // array of component type strings to remove (e.g. ['frame','motor'])
+  backgroundColor = "#2d2d44" // hex color for scene background
 }) => {
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
@@ -49,6 +50,9 @@ const BabylonViewer = ({
 
     const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
     const scene = new Scene(engine);
+    // Set background color
+    const bgColor = Color3.FromHexString(backgroundColor);
+    scene.clearColor = bgColor.toColor4(1.0);
     engineRef.current = engine;
     sceneRef.current = scene;
 
@@ -226,6 +230,37 @@ const BabylonViewer = ({
     }, 120); // small delay to allow subsequent loads/clones
   };
 
+  // Update background color when it changes
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const bgColor = Color3.FromHexString(backgroundColor);
+    scene.clearColor = bgColor.toColor4(1.0);
+  }, [backgroundColor]);
+
+  // Clear components when clearedComponents changes (separate effect to handle toggles)
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    // Remove meshes and transform nodes for cleared component types
+    scene.meshes.forEach(m => {
+      const t = m.metadata?.componentType;
+      if (t && clearedComponents.includes(t)) {
+        console.log(`[BabylonViewer] Clearing component: ${t} (mesh: ${m.name})`);
+        m.dispose();
+      }
+    });
+    // Also dispose transform nodes (used for motors, propellers)
+    (scene.transformNodes || []).forEach(n => {
+      const t = n.metadata?.componentType;
+      if (t && clearedComponents.includes(t)) {
+        console.log(`[BabylonViewer] Clearing component: ${t} (transform: ${n.name})`);
+        n.dispose();
+      }
+    });
+  }, [clearedComponents]);
+
   // Load models & layout when dependencies change or reset triggered
   useEffect(() => {
     const scene = sceneRef.current;
@@ -296,16 +331,6 @@ const BabylonViewer = ({
     setLoadedCount(0);
 
     const dynamicUrls = modelUrls.length ? [...modelUrls] : (modelUrl ? [modelUrl] : []);
-
-    // Remove meshes for cleared component types before any new loads
-    if (clearedComponents.length) {
-      scene.meshes.forEach(m => {
-        const t = m.metadata?.componentType;
-        if (t && clearedComponents.includes(t)) {
-          m.dispose();
-        }
-      });
-    }
 
     // If no URLs and all component URLs are null, exit early after ensuring scene cleared
     const noComponentUrls = !motorUrl && !batteryUrl && !fcUrl && !escUrl && !receiverUrl && !propellerUrl && dynamicUrls.length === 0;
@@ -384,25 +409,31 @@ const BabylonViewer = ({
         });
     };
 
-    // Load non-motor components first (centered)
+    // Load non-motor components first (centered) - skip if in clearedComponents
     dynamicUrls.forEach(url => {
       const compType = (url === currentUrls.frameUrl) ? 'frame' : undefined;
-      loadSingle(url, null, compType);
+      if (!compType || !clearedComponents.includes(compType)) {
+        loadSingle(url, null, compType);
+      }
     });
 
     // Dynamic vertical stacking: compress gaps when some components missing
     const stackSpacing = 3; // mm spacing between stacked components
     const stackComponents = [fcUrl, escUrl, receiverUrl, batteryUrl].filter(Boolean);
     stackComponents.forEach((url, idx) => {
-      const offsetY = idx * stackSpacing;
       const typeMap = { [fcUrl]: 'flight_controller', [escUrl]: 'esc', [receiverUrl]: 'receiver', [batteryUrl]: 'battery' };
-      loadSingle(url, (meshes) => {
-        meshes.forEach(m => {
-          if (!m.parent && !m.name.startsWith("__")) {
-            m.position.y = offsetY;
-          }
-        });
-      }, typeMap[url]);
+      const compType = typeMap[url];
+      // Skip loading if component type is in clearedComponents
+      if (!clearedComponents.includes(compType)) {
+        const offsetY = idx * stackSpacing;
+        loadSingle(url, (meshes) => {
+          meshes.forEach(m => {
+            if (!m.parent && !m.name.startsWith("__")) {
+              m.position.y = offsetY;
+            }
+          });
+        }, compType);
+      }
     });
 
     // Load motors at frame corner positions with mounting point alignment
@@ -411,8 +442,8 @@ const BabylonViewer = ({
     console.log('[BabylonViewer] Frame corners:', frameCornerPositions);
     console.log('[BabylonViewer] Mounting point:', motorMountingPoint);
     console.log('[BabylonViewer] motorUrl:', motorUrl);
-    console.log('[BabylonViewer] Will load motors?', motorUrl && motorPositions.length === 4);
-    if (motorUrl && motorPositions.length === 4) {
+    console.log('[BabylonViewer] Will load motors?', motorUrl && motorPositions.length === 4 && !clearedComponents.includes('motor'));
+    if (motorUrl && motorPositions.length === 4 && !clearedComponents.includes('motor')) {
       loadSingle(motorUrl, (loadedMeshes) => {
         const meshesToUse = loadedMeshes.filter(m => !m.name.startsWith("__"));
         console.log('[BabylonViewer] Motor meshes loaded:', meshesToUse.length);
@@ -464,7 +495,7 @@ const BabylonViewer = ({
     }
 
     // Load propellers: clone to four corners, positioned above motors (or frame corners if motors absent)
-    if (propellerUrl && frameCornerPositions.length === 4) {
+    if (propellerUrl && frameCornerPositions.length === 4 && !clearedComponents.includes('propeller')) {
       loadSingle(propellerUrl, (loadedMeshes) => {
         const meshesToUse = loadedMeshes.filter(m => !m.name.startsWith("__"));
         if (meshesToUse.length === 0) return;

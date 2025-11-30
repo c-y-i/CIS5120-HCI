@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBuild } from "../context/BuildContext";
 import "../styles/home.css";
@@ -6,11 +6,25 @@ import logo from "../assets/logo.png";
 import BabylonViewer from "./BabylonViewer";
 import componentsData from "../data/components.json";
 import TwoDViewer from "./TwoDViewer";
+import API_BASE from "../config/api";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { currentBuild, analysisResults } = useBuild();
+
+  // Model URLs state
+  const [modelUrls, setModelUrls] = useState([]);
+  const [motorModelUrl, setMotorModelUrl] = useState(null);
+  const [propellerModelUrl, setPropellerModelUrl] = useState(null);
+  const [batteryModelUrl, setBatteryModelUrl] = useState(null);
+  const [escModelUrl, setEscModelUrl] = useState(null);
+  const [fcModelUrl, setFcModelUrl] = useState(null);
+  const [receiverModelUrl, setReceiverModelUrl] = useState(null);
+  const [frameCornerPositions, setFrameCornerPositions] = useState([]);
+  const [motorMountingPoint, setMotorMountingPoint] = useState([0, 0, 0]);
+  const [clearedComponents, setClearedComponents] = useState([]);
+  const [backgroundColor, setBackgroundColor] = useState("#2d2d44");
 
   // Get component details from current build
   const getComponent = (type, id) => {
@@ -18,14 +32,102 @@ export default function HomePage() {
     return componentsData[type]?.find((c) => c.id === id) || null;
   };
 
+  const frame = currentBuild ? getComponent("frames", currentBuild.componentIds?.frameId) : null;
   const motor = currentBuild ? getComponent("motors", currentBuild.componentIds?.motorId) : null;
   const propeller = currentBuild ? getComponent("propellers", currentBuild.componentIds?.propellerId) : null;
   const battery = currentBuild ? getComponent("batteries", currentBuild.componentIds?.batteryId) : null;
   const fc = currentBuild ? getComponent("flight_controllers", currentBuild.componentIds?.flightControllerId) : null;
+  const esc = currentBuild ? getComponent("escs", currentBuild.componentIds?.escId) : null;
+  const receiver = currentBuild ? getComponent("receivers", currentBuild.componentIds?.receiverId) : null;
 
   const hasBuild = currentBuild && motor && propeller && battery;
   const hasAnalysis = analysisResults && hasBuild;
   const [activeView, setActiveView] = useState("3D");
+
+  // Fetch model URLs for 3D rendering
+  const fetchModelForComponent = async (category, componentId) => {
+    if (!componentId) return null;
+    try {
+      const res = await fetch(`${API_BASE}/api/models/list/${category}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const match = data.models.find(m => m.filename.toLowerCase().startsWith(componentId.toLowerCase()));
+      return match ? `${API_BASE}/api/models/convert/${category}/${match.filename}?format=glb` : null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    if (!hasBuild) {
+      setModelUrls([]);
+      setMotorModelUrl(null);
+      setPropellerModelUrl(null);
+      setBatteryModelUrl(null);
+      setEscModelUrl(null);
+      setFcModelUrl(null);
+      setReceiverModelUrl(null);
+      setFrameCornerPositions([]);
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      const urls = [];
+      
+      // Fetch frame model
+      const frameUrl = await fetchModelForComponent("frames", currentBuild.componentIds?.frameId);
+      if (frameUrl) urls.push(frameUrl);
+
+      // Fetch other component models
+      const motorUrl = await fetchModelForComponent("motors", currentBuild.componentIds?.motorId);
+      const propellerUrl = await fetchModelForComponent("propellers", currentBuild.componentIds?.propellerId);
+      const batteryUrl = await fetchModelForComponent("batteries", currentBuild.componentIds?.batteryId);
+      const escUrl = await fetchModelForComponent("escs", currentBuild.componentIds?.escId);
+      const fcUrl = await fetchModelForComponent("flight_controllers", currentBuild.componentIds?.flightControllerId);
+      const receiverUrl = await fetchModelForComponent("receivers", currentBuild.componentIds?.receiverId);
+
+      if (!cancelled) {
+        setModelUrls(urls);
+        setMotorModelUrl(motorUrl);
+        setPropellerModelUrl(propellerUrl);
+        setBatteryModelUrl(batteryUrl);
+        setEscModelUrl(escUrl);
+        setFcModelUrl(fcUrl);
+        setReceiverModelUrl(receiverUrl);
+
+        // Extract frame corner positions
+        if (frame) {
+          const corners = [
+            frame.upper_left_motor_position,
+            frame.upper_right_motor_position,
+            frame.lower_right_motor_position,
+            frame.lower_left_motor_position
+          ];
+          setFrameCornerPositions(corners);
+        } else {
+          setFrameCornerPositions([]);
+        }
+
+        // Extract motor mounting point
+        if (motor && motor.mounting_point) {
+          setMotorMountingPoint(motor.mounting_point);
+        } else if (motor && motor.size) {
+          const altMount = componentsData.motors.find(m => m.size === motor.size && m.mounting_point);
+          if (altMount) {
+            setMotorMountingPoint(altMount.mounting_point);
+          } else {
+            setMotorMountingPoint([0, 0, 0]);
+          }
+        } else {
+          setMotorMountingPoint([0, 0, 0]);
+        }
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [currentBuild, hasBuild, frame, motor]);
 
   return (
     <div className={`app-container${menuOpen ? " menu-open" : ""}`}>
@@ -62,9 +164,115 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Component Visibility Controls (3D View Only) */}
+      {activeView === "3D" && hasBuild && (
+        <div style={{
+          padding: "8px 14px",
+          background: "#f8f9fa",
+          borderBottom: "1px solid #e0e0e0",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+          fontSize: "12px"
+        }}>
+          <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexWrap: "wrap", gap: "6px" }}>
+            <span style={{ color: "#666" }}>Hide components:</span>
+            <label style={{ fontSize: "11px", color: "#666", display: "flex", alignItems: "center", gap: "4px" }}>
+              Background:
+              <select
+                value={backgroundColor}
+                onChange={(e) => setBackgroundColor(e.target.value)}
+                style={{
+                  padding: "4px 6px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                  fontSize: "11px",
+                  background: "#fff",
+                  cursor: "pointer"
+                }}
+              >
+                <option value="#2d2d44">Dark Gray</option>
+                <option value="#111111">Black</option>
+                <option value="#1a1a2e">Dark Blue</option>
+                <option value="#2c3e50">Slate Blue</option>
+                <option value="#34495e">Charcoal</option>
+                <option value="#ffffff">White</option>
+                <option value="#f5f5f5">Light Gray</option>
+                <option value="#e3f2fd">Light Blue</option>
+                <option value="#fff3e0">Light Orange</option>
+                <option value="#f1f8e9">Light Green</option>
+                <option value="#fce4ec">Light Pink</option>
+                <option value="#e8eaf6">Lavender</option>
+                <option value="#fff9c4">Light Yellow</option>
+                <option value="#e0f2f1">Mint</option>
+                <option value="#263238">Dark Teal</option>
+                <option value="#3e2723">Dark Brown</option>
+                <option value="#1b5e20">Dark Green</option>
+              </select>
+            </label>
+          </div>
+          {[
+            { id: 'frame', label: 'Frame', icon: '🖼️' },
+            { id: 'motor', label: 'Motors', icon: '⚙️' },
+            { id: 'propeller', label: 'Props', icon: '🔄' },
+            { id: 'battery', label: 'Battery', icon: '🔋' },
+            { id: 'flight_controller', label: 'FC', icon: '🖥️' },
+            { id: 'esc', label: 'ESC', icon: '⚡' },
+            { id: 'receiver', label: 'RX', icon: '📡' }
+          ].map(comp => {
+            const isHidden = clearedComponents.includes(comp.id);
+            return (
+              <button
+                key={comp.id}
+                onClick={() => {
+                  setClearedComponents(prev => 
+                    isHidden 
+                      ? prev.filter(c => c !== comp.id)
+                      : [...prev, comp.id]
+                  );
+                }}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: "12px",
+                  border: `1px solid ${isHidden ? '#ccc' : '#4CAF50'}`,
+                  background: isHidden ? '#fff' : '#e8f5e9',
+                  color: isHidden ? '#999' : '#2e7d32',
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  opacity: isHidden ? 0.6 : 1
+                }}
+              >
+                <span>{comp.icon}</span>
+                <span>{comp.label}</span>
+                {isHidden && <span style={{ marginLeft: "2px" }}>👁️‍🗨️</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* 3D viewer */}
       <div className="viewer-container">
-        {activeView === "3D" && <BabylonViewer />}
+        {activeView === "3D" && (
+          <BabylonViewer
+            modelUrls={modelUrls}
+            motorUrl={motorModelUrl}
+            motorMountingPoint={motorMountingPoint}
+            frameCornerPositions={frameCornerPositions}
+            propellerUrl={propellerModelUrl}
+            batteryUrl={batteryModelUrl}
+            escUrl={escModelUrl}
+            fcUrl={fcModelUrl}
+            receiverUrl={receiverModelUrl}
+            groundClearance={4}
+            autoRotate
+            clearedComponents={clearedComponents}
+            backgroundColor={backgroundColor}
+          />
+        )}
         {activeView === "2D" && <TwoDViewer />}
       </div>
 
