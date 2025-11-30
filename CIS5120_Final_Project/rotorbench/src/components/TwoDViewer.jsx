@@ -6,12 +6,11 @@ import {
     Vector3,
     HemisphericLight,
     SceneLoader,
-    TransformNode,
-    Camera
+    TransformNode
 } from "@babylonjs/core";
 import "@babylonjs/loaders";
 
-const TwoDViewer = () => {
+const TwoDViewer = ({ modelUrl }) => {
     const canvasRef = useRef(null);
 
     useEffect(() => {
@@ -22,7 +21,7 @@ const TwoDViewer = () => {
         const scene = new Scene(engine);
 
         // Top-down camera: Maintain consistency with the 3D alpha, fixing only the beta to a top-down perspective.
-        const radius = 35;
+        const radius = 360;
         const camera = new ArcRotateCamera("cam2D", Math.PI / 2, 0.0001, radius, Vector3.Zero(), scene);
         camera.lowerBetaLimit = 0.0001;
         camera.upperBetaLimit = 0.0001;
@@ -34,49 +33,67 @@ const TwoDViewer = () => {
 
         new HemisphericLight("hemi", new Vector3(0, 1, 0), scene);
 
-        SceneLoader.ImportMesh("", "/models/", "model.obj", scene, (meshes) => {
-            const pivot = new TransformNode("pivot", scene);
-            meshes.forEach(m => { m.parent = pivot; });
+        let isDragging = false;
+        let lastX = 0;
+        const rotationStep = 0.05;
+        let pivotNode = null;
 
-            pivot.rotation.x = Math.PI / 2; // Convert Z-up to Y-up
+        const onKey = (e) => {
+            if (!pivotNode) return;
+            if (e.key === "ArrowLeft") pivotNode.rotation.y -= rotationStep;
+            if (e.key === "ArrowRight") pivotNode.rotation.y += rotationStep;
+        };
 
-            // Keyboard rotation
-            const step = 0.05;
-            const onKey = (e) => {
-                if (e.key === "ArrowLeft") pivot.rotation.y -= step;
-                if (e.key === "ArrowRight") pivot.rotation.y += step;
-            };
+        const onPointerDown = (e) => {
+            if (!pivotNode) return;
+            isDragging = true;
+            lastX = e.clientX;
+        };
+
+        const onPointerUp = () => {
+            isDragging = false;
+        };
+
+        const onPointerMove = (e) => {
+            if (!isDragging || !pivotNode) return;
+            const deltaX = e.clientX - lastX;
+            pivotNode.rotation.y += deltaX * 0.005;
+            lastX = e.clientX;
+        };
+
+        const attachInputHandlers = () => {
             window.addEventListener("keydown", onKey);
-
-            // Drag and rotate with the mouse
-            let isDragging = false;
-            let lastX = 0;
-
-            const onPointerDown = (e) => {
-                isDragging = true;
-                lastX = e.clientX;
-            };
-            const onPointerUp = () => {
-                isDragging = false;
-            };
-            const onPointerMove = (e) => {
-                if (!isDragging) return;
-                const deltaX = e.clientX - lastX;
-                pivot.rotation.y += deltaX * 0.005; // Adjust rotation sensitivity
-                lastX = e.clientX;
-            };
-
             canvas.addEventListener("pointerdown", onPointerDown);
             window.addEventListener("pointerup", onPointerUp);
             window.addEventListener("pointermove", onPointerMove);
+        };
 
-            scene.onDisposeObservable.add(() => {
-                window.removeEventListener("keydown", onKey);
-                canvas.removeEventListener("pointerdown", onPointerDown);
-                window.removeEventListener("pointerup", onPointerUp);
-                window.removeEventListener("pointermove", onPointerMove);
-            });
-        });
+        const detachInputHandlers = () => {
+            window.removeEventListener("keydown", onKey);
+            canvas.removeEventListener("pointerdown", onPointerDown);
+            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointermove", onPointerMove);
+        };
+
+        const loadModel = async () => {
+            if (!modelUrl) return;
+            try {
+                const result = await SceneLoader.ImportMeshAsync(null, "", modelUrl, scene);
+                const pivot = new TransformNode("pivot", scene);
+                result.meshes.forEach(m => {
+                    if (!m.name.startsWith("__")) {
+                        m.parent = pivot;
+                    }
+                });
+                pivot.rotation.x = Math.PI / 2; // Convert Z-up to Y-up
+                pivotNode = pivot;
+                attachInputHandlers();
+            } catch (err) {
+                console.error("[TwoDViewer] Failed to load model", modelUrl, err);
+            }
+        };
+
+        loadModel();
 
         engine.runRenderLoop(() => scene.render());
         const onResize = () => {
@@ -86,16 +103,21 @@ const TwoDViewer = () => {
 
         return () => {
             window.removeEventListener("resize", onResize);
+            detachInputHandlers();
             scene.dispose();
             engine.dispose();
         };
-    }, []);
+    }, [modelUrl]);
 
     return (
         <div className="drone-wrapper">
             <canvas ref={canvasRef} className="drone-canvas" style={{ width: "100%", height: "100%", display: "block" }} />
         </div>
     );
+};
+
+TwoDViewer.defaultProps = {
+    modelUrl: null,
 };
 
 export default TwoDViewer;

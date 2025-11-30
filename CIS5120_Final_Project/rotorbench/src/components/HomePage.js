@@ -7,6 +7,7 @@ import BabylonViewer from "./BabylonViewer";
 import componentsData from "../data/components.json";
 import TwoDViewer from "./TwoDViewer";
 import API_BASE from "../config/api";
+import sampleAssembly from "../assets/sample_assembly.glb";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -43,6 +44,11 @@ export default function HomePage() {
   const hasBuild = currentBuild && motor && propeller && battery;
   const hasAnalysis = analysisResults && hasBuild;
   const [activeView, setActiveView] = useState("3D");
+  const hasAnySelection = Boolean(
+    currentBuild &&
+    currentBuild.componentIds &&
+    Object.values(currentBuild.componentIds).some(Boolean)
+  );
 
   // Fetch model URLs for 3D rendering
   const fetchModelForComponent = async (category, componentId) => {
@@ -258,6 +264,7 @@ export default function HomePage() {
       <div className="viewer-container">
         {activeView === "3D" && (
           <BabylonViewer
+            modelUrl={!hasAnySelection ? sampleAssembly : null}
             modelUrls={modelUrls}
             motorUrl={motorModelUrl}
             motorMountingPoint={motorMountingPoint}
@@ -273,7 +280,9 @@ export default function HomePage() {
             backgroundColor={backgroundColor}
           />
         )}
-        {activeView === "2D" && <TwoDViewer />}
+        {activeView === "2D" && (
+          <TwoDViewer modelUrl={hasAnySelection ? "/models/model.obj" : sampleAssembly} />
+        )}
       </div>
 
       {/* Spec Section - Shows saved build or placeholder */}

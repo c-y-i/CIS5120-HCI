@@ -135,6 +135,11 @@ export default function BuildPage() {
   const [showDebugStatus, setShowDebugStatus] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState("#2d2d44");
 
+  // Ensure the viewer starts clean (no fallback sample) every time BuildPage mounts
+  useEffect(() => {
+    setResetKey(k => k + 1);
+  }, []);
+
   // Whenever a component is selected again, ensure it is removed from the cleared list
   useEffect(() => {
     const selectionToType = [
@@ -445,6 +450,7 @@ export default function BuildPage() {
         )}
         
         <BabylonViewer
+          modelUrl={null}
           modelUrls={modelUrls}
           motorUrl={motorModelUrl}
           motorMountingPoint={motorMountingPoint}

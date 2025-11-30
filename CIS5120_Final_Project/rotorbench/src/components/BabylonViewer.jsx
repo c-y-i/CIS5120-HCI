@@ -42,6 +42,33 @@ const BabylonViewer = ({
   const [loadStatuses, setLoadStatuses] = useState({});
   const previousUrlsRef = useRef(null);
   const pendingLoadsRef = useRef(0);
+  const [cameraStatus, setCameraStatus] = useState({ alpha: 0, beta: 0, radius: 0 });
+  const sampleAssemblyActiveRef = useRef(false);
+  const onLoadedRef = useRef(onLoaded);
+  const previousModelUrlsRef = useRef([]);
+  const frameLoadPromiseRef = useRef(Promise.resolve());
+  const unitScaleRef = useRef(0.001);
+
+  const SAMPLE_CAMERA = { alpha: 7.85, beta: 1.2, radius: 460 };
+
+  const isSampleAssemblyUrl = (url) => typeof url === 'string' && url.toLowerCase().includes('sample_assembly');
+  const waitForFrameReady = async () => {
+    if (!frameLoadPromiseRef.current) return;
+    try {
+      await frameLoadPromiseRef.current;
+    } catch (err) {
+      console.warn('[BabylonViewer] Frame load promise rejected:', err);
+    }
+  };
+
+  const clearanceToSceneUnits = (clearanceMm) => {
+    if (!clearanceMm) return 0;
+    const scale = unitScaleRef.current;
+    if (Number.isFinite(scale) && scale > 0) {
+      return clearanceMm * scale;
+    }
+    return clearanceMm * 0.001;
+  };
 
   // Initialize engine + scene once
   useEffect(() => {
@@ -57,15 +84,15 @@ const BabylonViewer = ({
     sceneRef.current = scene;
 
     // Camera - start very close then auto-fit once models load
-    const camera = new ArcRotateCamera("cam", Math.PI / 2, Math.PI / 2.4, 0.5, Vector3.Zero(), scene);    
+    const camera = new ArcRotateCamera("cam", Math.PI / 2, Math.PI / 2.4, 2.5, Vector3.Zero(), scene);
     camera.attachControl(canvas, true);
-    camera.lowerRadiusLimit = 0.01;    // Allow very close zoom
-    camera.upperRadiusLimit = 80;   // Still cap far zoom
-    camera.wheelPrecision = 100;     // Smooth zoom
+    camera.lowerRadiusLimit = 0.3;    // Allow reasonably close zoom without clipping
+    camera.upperRadiusLimit = 160;   // Allow more room when fitting large models
+    camera.wheelPrecision = 80;     // Smooth zoom
     camera.panningSensibility = 75; // Enable panning comfortably
     camera.useNaturalPinchZoom = true;
-    camera.minZ = 0.01; // prevent clipping for close radius
-    camera.maxZ = 10000;
+    camera.minZ = 0.05; // prevent clipping for close radius
+    camera.maxZ = 20000;
     cameraRef.current = camera;
 
     // Lighting - brighter and more directional for better visibility
@@ -79,6 +106,7 @@ const BabylonViewer = ({
       if (autoRotate && scene.meshes) {
         scene.meshes.forEach(m => { if (m.metadata?.autoSpin) m.rotation.y += 0.002; });
       }
+      setCameraStatus({ alpha: camera.alpha, beta: camera.beta, radius: camera.radius });
       scene.render();
     });
 
@@ -87,10 +115,18 @@ const BabylonViewer = ({
 
     return () => {
       window.removeEventListener("resize", onResize);
+      if (normalizeTimerRef.current) {
+        clearTimeout(normalizeTimerRef.current);
+        normalizeTimerRef.current = null;
+      }
       scene.dispose();
       engine.dispose();
     };
   }, [autoRotate]);
+
+  useEffect(() => {
+    onLoadedRef.current = onLoaded;
+  }, [onLoaded]);
 
   // Convert frame corner positions to Vector3 and apply motor mounting point offset
   const computeMotorPositions = (cornerPositions, mountingPoint) => {
@@ -149,12 +185,23 @@ const BabylonViewer = ({
   };
 
   // Helper: fit camera to current scene meshes
+  const isRenderableMesh = (mesh) => {
+    if (!mesh || typeof mesh.getBoundingInfo !== 'function') return false;
+    if (!mesh.name) return true;
+    const hasMetadata = Boolean(mesh.metadata?.componentType || mesh.metadata?.sourceUrl);
+    const isSystemName = mesh.name.startsWith("__");
+    if (!isSystemName) return true;
+    if (hasMetadata) return true;
+    if (mesh.getTotalVertices && mesh.getTotalVertices() > 0) return true;
+    return false;
+  };
+
   const fitCameraToScene = (paddingFactor = 1.5) => {
     const scene = sceneRef.current;
     const camera = cameraRef.current;
     if (!scene || !camera) return;
     
-    const meshes = scene.meshes.filter(m => !m.name.startsWith("__") && m.isVisible && m.getBoundingInfo);
+    const meshes = scene.meshes.filter(m => isRenderableMesh(m) && m.isVisible && m.getBoundingInfo);
     if (!meshes.length) return;
 
     // 1. Calculate the bounding box of all meshes
@@ -202,11 +249,41 @@ const BabylonViewer = ({
     camera.minZ = desiredRadius * 0.01;
     camera.maxZ = desiredRadius * 1000; 
   };
+  const getRootNode = (node) => {
+    if (!node) return null;
+    let current = node;
+    while (current.parent) current = current.parent;
+    return current;
+  };
+
+  const shiftSceneBy = (offset) => {
+    const scene = sceneRef.current;
+    if (!scene || Math.abs(offset) < 1e-3) return;
+    const shifted = new Set();
+    const shiftNode = (node) => {
+      if (!node || shifted.has(node) || !node.position) return;
+      node.position.y += offset;
+      shifted.add(node);
+    };
+
+    scene.meshes.forEach(m => {
+      if (!isRenderableMesh(m)) return;
+      const root = getRootNode(m);
+      shiftNode(root || m);
+    });
+
+    (scene.transformNodes || []).forEach(n => {
+      if (!n.parent) shiftNode(n);
+    });
+
+    scene.__groundShift = (scene.__groundShift || 0) + offset;
+  };
+
   // Normalize Y so lowest point sits at ground (y=0) with slight clearance
   const normalizeSceneY = (clearance = 0) => {
     const scene = sceneRef.current;
     if (!scene) return;
-    const meshes = scene.meshes.filter(m => !m.name.startsWith("__") && m.isVisible && m.getBoundingInfo);
+    const meshes = scene.meshes.filter(m => isRenderableMesh(m) && m.isVisible && m.getBoundingInfo);
     if (!meshes.length) return;
     let minY = Number.POSITIVE_INFINITY;
     meshes.forEach(m => {
@@ -215,18 +292,27 @@ const BabylonViewer = ({
     });
     if (minY === Number.POSITIVE_INFINITY) return;
     const offset = -minY + clearance;
-    if (Math.abs(offset) < 1e-3) return; // already fine
-    meshes.forEach(m => {
-      m.position.y += offset;
-    });
+    shiftSceneBy(offset);
   };
 
   // Debounce normalization to run after all loads complete
-  const scheduleNormalization = () => {
+  const scheduleNormalization = (sessionToken) => {
     if (normalizeTimerRef.current) clearTimeout(normalizeTimerRef.current);
     normalizeTimerRef.current = setTimeout(() => {
-      normalizeSceneY(groundClearance);
+      const scene = sceneRef.current;
+      if (!scene || scene.__currentLoadSession !== sessionToken) return;
+      const clearanceSceneUnits = clearanceToSceneUnits(groundClearance);
+      normalizeSceneY(clearanceSceneUnits);
       fitCameraToScene(); // refit after vertical shift
+
+      if (sampleAssemblyActiveRef.current) {
+        const camera = cameraRef.current;
+        if (camera) {
+          camera.alpha = SAMPLE_CAMERA.alpha;
+          camera.beta = SAMPLE_CAMERA.beta;
+          camera.radius = SAMPLE_CAMERA.radius;
+        }
+      }
     }, 120); // small delay to allow subsequent loads/clones
   };
 
@@ -265,12 +351,40 @@ const BabylonViewer = ({
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
+    if (typeof scene.__groundShift !== 'number') {
+      scene.__groundShift = 0;
+    }
+
+    if (normalizeTimerRef.current) {
+      clearTimeout(normalizeTimerRef.current);
+      normalizeTimerRef.current = null;
+    }
+
+    const disposeComponentType = (componentType) => {
+      if (!componentType) return;
+      const meshList = [...scene.meshes];
+      meshList.forEach(m => {
+        if (!m || m.name.startsWith("__")) return;
+        const tagged = m.metadata?.componentType === componentType;
+        const byName = m.name.toLowerCase().includes(componentType) || m.name.startsWith(`${componentType}_`);
+        if (tagged || byName) {
+          m.dispose();
+        }
+      });
+      const nodeList = [...(scene.transformNodes || [])];
+      nodeList.forEach(n => {
+        if (n.metadata?.componentType === componentType) {
+          n.dispose();
+        }
+      });
+    };
 
     // Each dependency change starts a new load session so late async loads from
     // previous selections can be ignored safely.
     const loadSession = Symbol('loadSession');
     scene.__currentLoadSession = loadSession;
     pendingLoadsRef.current = 0;
+    sampleAssemblyActiveRef.current = false;
 
     // Clear previous non-system meshes only when URLs actually change
     // Track individual component URLs to avoid clearing everything when only positioning changes
@@ -281,7 +395,8 @@ const BabylonViewer = ({
       escUrl,
       receiverUrl,
       propellerUrl,
-      frameUrl: modelUrls[0] || null
+      frameUrl: modelUrls[0] || null,
+      sampleUrl: (!modelUrls.length && modelUrl) ? modelUrl : null
     };
     
     const previousUrls = previousUrlsRef.current || {};
@@ -290,6 +405,7 @@ const BabylonViewer = ({
     const resetTriggered = resetKey !== (scene.__lastResetKey || 0);
     if (resetTriggered) {
       scene.__lastResetKey = resetKey;
+      scene.__groundShift = 0;
     }
 
     // Only dispose meshes for components whose URLs actually change
@@ -313,7 +429,8 @@ const BabylonViewer = ({
             escUrl: 'esc',
             receiverUrl: 'receiver',
             propellerUrl: 'propeller',
-            frameUrl: 'frame'
+            frameUrl: 'frame',
+            sampleUrl: 'sample'
           };
           const componentType = keyToType[key] || key.replace('Url','');
 
@@ -340,7 +457,11 @@ const BabylonViewer = ({
     previousUrlsRef.current = currentUrls;
     setLoadedCount(0);
 
-    const dynamicUrls = modelUrls.length ? [...modelUrls] : (modelUrl ? [modelUrl] : []);
+    const dynamicUrls = [...modelUrls];
+    const includeSampleUrl = !dynamicUrls.length && Boolean(modelUrl);
+    const previousModelUrls = previousModelUrlsRef.current;
+    const previousModelUrlSet = new Set(previousModelUrls);
+    const dynamicUrlsToLoad = resetTriggered ? dynamicUrls : dynamicUrls.filter(url => !previousModelUrlSet.has(url));
 
     const activeUrls = new Set([
       ...dynamicUrls,
@@ -349,7 +470,8 @@ const BabylonViewer = ({
       fcUrl,
       escUrl,
       receiverUrl,
-      propellerUrl
+      propellerUrl,
+      includeSampleUrl ? modelUrl : null
     ].filter(Boolean));
     setLoadStatuses(prev => {
       const next = {};
@@ -359,6 +481,19 @@ const BabylonViewer = ({
       if (Object.keys(next).length === Object.keys(prev).length) return prev;
       return next;
     });
+
+    const applyGroundShiftToMeshes = (meshList) => {
+      const shift = scene.__groundShift || 0;
+      if (!shift || !Array.isArray(meshList)) return;
+      const adjusted = new Set();
+      meshList.forEach(mesh => {
+        if (!mesh) return;
+        const root = getRootNode(mesh) || mesh;
+        if (!root || !root.position || adjusted.has(root)) return;
+        root.position.y += shift;
+        adjusted.add(root);
+      });
+    };
 
     // Remove meshes for cleared component types before any new loads
     if (clearedComponents.length) {
@@ -371,8 +506,9 @@ const BabylonViewer = ({
     }
 
     // If no URLs and all component URLs are null, exit early after ensuring scene cleared
-    const noComponentUrls = !motorUrl && !batteryUrl && !fcUrl && !escUrl && !receiverUrl && !propellerUrl && dynamicUrls.length === 0;
+    const noComponentUrls = !motorUrl && !batteryUrl && !fcUrl && !escUrl && !receiverUrl && !propellerUrl && dynamicUrls.length === 0 && !includeSampleUrl;
     if (noComponentUrls) {
+      previousModelUrlsRef.current = [];
       fitCameraToScene(); // optional small camera reset
       return; // nothing to load
     }
@@ -383,16 +519,18 @@ const BabylonViewer = ({
     };
 
     const preflight = async (url) => {
+      const sceneInstance = sceneRef.current;
+      if (!sceneInstance || sceneInstance.isDisposed) return false;
       try {
         const headResp = await fetch(url, { method: 'HEAD' });
         if (!headResp.ok) {
-          markStatus(url, 'error', `HEAD ${headResp.status}`);
+          markStatus(url, 'warn', `HEAD ${headResp.status}; loading anyway`);
           return false;
         }
         markStatus(url, 'pending', 'fetching');
         return true;
       } catch (e) {
-        markStatus(url, 'error', e.message);
+        markStatus(url, 'warn', `HEAD failed: ${e.message}; loading anyway`);
         return false;
       }
     };
@@ -406,66 +544,96 @@ const BabylonViewer = ({
     };
 
     const loadSingle = async (url, cb, componentType) => {
-      if (!url) return;
-      const ok = await preflight(url);
-      if (!ok) return;
+      if (!url) return null;
+      const sceneInstance = sceneRef.current;
+      if (!sceneInstance || sceneInstance.isDisposed) return null;
+      await preflight(url);
       pendingLoadsRef.current += 1;
-      // Normalize URL so Babylon.js recognizes it as GLB
       const normalizedUrl = normalizeModelUrl(url);
-      SceneLoader.ImportMeshAsync(null, "", normalizedUrl, scene)
-        .then((result) => {
-          if (scene.__currentLoadSession !== loadSession) {
-            result.meshes.forEach(m => {
-              if (!m.name.startsWith("__")) m.dispose();
-            });
-            return;
-          }
 
-          // result.meshes contains ONLY meshes imported for this URL
-          const newMeshes = result.meshes.filter(m => !m.name.startsWith("__"));
-
-          newMeshes.forEach(m => {
-            m.metadata = { ...(m.metadata || {}), autoSpin: true, sourceUrl: url };
-            if (componentType) m.metadata.componentType = componentType;
+      try {
+        if (!sceneInstance || sceneInstance.isDisposed) {
+          return null;
+        }
+        const result = await SceneLoader.ImportMeshAsync(null, "", normalizedUrl, sceneInstance);
+        if (scene.__currentLoadSession !== loadSession) {
+          result.meshes.forEach(m => {
+            if (!m.name.startsWith("__")) m.dispose();
           });
+          return null;
+        }
 
-          setLoadedCount(prev => {
-            const next = prev + 1;
-            if (onLoaded) onLoaded(next);
-            return next;
-          });
+        const newMeshes = result.meshes.filter(m => !m.name.startsWith("__"));
+        applyGroundShiftToMeshes(newMeshes);
+        const isSample = isSampleAssemblyUrl(url);
 
-          if (newMeshes.length === 0) {
-            markStatus(url, 'error', 'No meshes loaded');
-          } else {
-            markStatus(url, 'success', `${newMeshes.length} mesh(es)`);
-          }
-
-          if (cb) cb(newMeshes);
-        })
-        .catch((e) => {
-          console.error("Failed to load model:", normalizedUrl, "(original:", url, ")", e);
-          if (scene.__currentLoadSession === loadSession) {
-            markStatus(url, 'error', (e && e.message) || 'Load failed');
-          }
-        })
-        .finally(() => {
-          if (scene.__currentLoadSession === loadSession) {
-            pendingLoadsRef.current -= 1;
-            if (pendingLoadsRef.current === 0) {
-              // scheduleNormalization();
-            }
-          }
+        newMeshes.forEach(m => {
+          const baseMetadata = m.metadata || {};
+          const resolvedType = componentType || (isSample ? 'sample' : undefined);
+          m.metadata = { ...baseMetadata, autoSpin: true, sourceUrl: url };
+          if (resolvedType) m.metadata.componentType = resolvedType;
         });
+
+        setLoadedCount(prev => {
+          const next = prev + 1;
+          const callback = onLoadedRef.current;
+          if (callback) callback(next);
+          return next;
+        });
+
+        if (newMeshes.length === 0) {
+          markStatus(url, 'error', 'No meshes loaded');
+        } else {
+          markStatus(url, 'success', `${newMeshes.length} mesh(es)`);
+          if (isSample) {
+            sampleAssemblyActiveRef.current = true;
+          }
+          scheduleNormalization(loadSession);
+        }
+
+        if (cb) await cb(newMeshes);
+        return newMeshes;
+      } catch (e) {
+        console.error("Failed to load model:", normalizedUrl, "(original:", url, ")", e);
+        if (scene.__currentLoadSession === loadSession) {
+          markStatus(url, 'error', (e && e.message) || 'Load failed');
+        }
+        return null;
+      } finally {
+        if (scene.__currentLoadSession === loadSession) {
+          pendingLoadsRef.current -= 1;
+          if (pendingLoadsRef.current === 0) {
+            scheduleNormalization(loadSession);
+          }
+        }
+      }
     };
 
     // Load non-motor components first (centered) - skip if in clearedComponents
-    dynamicUrls.forEach(url => {
-      const compType = (url === currentUrls.frameUrl) ? 'frame' : undefined;
+    const frameUrlToLoad = dynamicUrlsToLoad.find(url => url === currentUrls.frameUrl && url);
+    const handleFrameLoaded = async () => {
+      const sceneInstance = sceneRef.current;
+      if (!sceneInstance || frameCornerPositions.length !== 4) return;
+      const inferredScale = inferUnitScale(sceneInstance, frameCornerPositions);
+      if (Number.isFinite(inferredScale) && inferredScale > 0) {
+        unitScaleRef.current = inferredScale;
+      }
+    };
+    if (frameUrlToLoad && !clearedComponents.includes('frame')) {
+      frameLoadPromiseRef.current = loadSingle(frameUrlToLoad, handleFrameLoaded, 'frame');
+    } else {
+      frameLoadPromiseRef.current = Promise.resolve();
+    }
+
+    dynamicUrlsToLoad.forEach(url => {
+      if (url === frameUrlToLoad) return;
+      const compType = isSampleAssemblyUrl(url) ? 'sample' : (url === currentUrls.frameUrl ? 'frame' : undefined);
       if (!compType || !clearedComponents.includes(compType)) {
         loadSingle(url, null, compType);
       }
     });
+
+    previousModelUrlsRef.current = dynamicUrls;
 
     // Dynamic vertical stacking: compress gaps when some components missing
     const stackSpacing = 3; // mm spacing between stacked components
@@ -479,7 +647,8 @@ const BabylonViewer = ({
         loadSingle(url, (meshes) => {
           meshes.forEach(m => {
             if (!m.parent && !m.name.startsWith("__")) {
-              m.position.y = offsetY;
+              const shift = scene.__groundShift || 0;
+              m.position.y = offsetY + shift;
             }
           });
         }, compType);
@@ -494,19 +663,28 @@ const BabylonViewer = ({
     console.log('[BabylonViewer] motorUrl:', motorUrl);
     console.log('[BabylonViewer] Will load motors?', motorUrl && motorPositions.length === 4 && !clearedComponents.includes('motor'));
     if (motorUrl && motorPositions.length === 4 && !clearedComponents.includes('motor')) {
-      loadSingle(motorUrl, (loadedMeshes) => {
+      disposeComponentType('motor');
+      loadSingle(motorUrl, async (loadedMeshes) => {
+        await waitForFrameReady();
         const meshesToUse = loadedMeshes.filter(m => !m.name.startsWith("__"));
         console.log('[BabylonViewer] Motor meshes loaded:', meshesToUse.length);
         if (meshesToUse.length === 0) return;
 
         // Determine unit scale between mm (corner data) and scene units (GLB)
         const unitScale = inferUnitScale(scene, frameCornerPositions);
+        if (Number.isFinite(unitScale) && unitScale > 0) {
+          unitScaleRef.current = unitScale;
+        }
         const scaledPositions = motorPositions.map(p => p.scale(unitScale));
 
         // Create a TransformNode per motor instance and parent all meshes to it
         const createMotorInstance = (idx, position) => {
           const root = new TransformNode(`motor_${idx}_root`, scene);
           root.position = position.clone();
+          const shift = scene.__groundShift || 0;
+          if (shift) {
+            root.position.y += shift;
+          }
           root.metadata = { componentType: 'motor' };
 
           meshesToUse.forEach((mesh) => {
@@ -546,12 +724,17 @@ const BabylonViewer = ({
 
     // Load propellers: clone to four corners, positioned above motors (or frame corners if motors absent)
     if (propellerUrl && frameCornerPositions.length === 4 && !clearedComponents.includes('propeller')) {
-      loadSingle(propellerUrl, (loadedMeshes) => {
+      disposeComponentType('propeller');
+      loadSingle(propellerUrl, async (loadedMeshes) => {
+        await waitForFrameReady();
         const meshesToUse = loadedMeshes.filter(m => !m.name.startsWith("__"));
         if (meshesToUse.length === 0) return;
 
         // Infer unit scale and compute base positions
         const unitScale = inferUnitScale(scene, frameCornerPositions);
+        if (Number.isFinite(unitScale) && unitScale > 0) {
+          unitScaleRef.current = unitScale;
+        }
         const motorRoots = (scene.transformNodes || []).filter(n => n.metadata?.componentType === 'motor')
                              .sort((a,b) => a.name.localeCompare(b.name));
 
@@ -569,6 +752,10 @@ const BabylonViewer = ({
         const createPropInstance = (idx, position) => {
           const root = new TransformNode(`prop_${idx}_root`, scene);
           root.position = position.clone();
+          const shift = scene.__groundShift || 0;
+          if (shift) {
+            root.position.y += shift;
+          }
           root.metadata = { componentType: 'propeller' };
           meshesToUse.forEach((mesh) => {
             const inst = idx === 0 ? mesh : mesh.clone(`prop_${idx}_${mesh.name}`);
@@ -586,7 +773,11 @@ const BabylonViewer = ({
       }, 'propeller');
     }
 
-  }, [modelUrl, modelUrls, frameCornerPositions, motorUrl, motorMountingPoint, batteryUrl, fcUrl, escUrl, receiverUrl, propellerUrl, onLoaded, groundClearance, resetKey, clearedComponents]);
+    if (includeSampleUrl && !clearedComponents.includes('sample')) {
+      loadSingle(modelUrl, null, 'sample');
+    }
+
+  }, [modelUrl, modelUrls, frameCornerPositions, motorUrl, motorMountingPoint, batteryUrl, fcUrl, escUrl, receiverUrl, propellerUrl, groundClearance, resetKey, clearedComponents]);
 
   return (
     <div style={{ width: "100%", height: "400px", border: "1px solid #222", borderRadius: 8, overflow: "hidden", background: "#111", position:'relative' }}>
@@ -603,6 +794,11 @@ const BabylonViewer = ({
               </div>
             </div>
           ))}
+          <div style={{ marginTop:6, borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:4 }}>
+            <div>Camera α: {cameraStatus.alpha.toFixed(2)}</div>
+            <div>Camera β: {cameraStatus.beta.toFixed(2)}</div>
+            <div>Radius: {cameraStatus.radius.toFixed(2)}</div>
+          </div>
         </div>
       )}
     </div>
