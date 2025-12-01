@@ -636,10 +636,11 @@ const BabylonViewer = ({
     previousModelUrlsRef.current = dynamicUrls;
 
     // Dynamic vertical stacking: compress gaps when some components missing
+    // Stack FC, ESC, and receiver in center (battery is mounted on bottom plate separately)
     const stackSpacing = 3; // mm spacing between stacked components
-    const stackComponents = [fcUrl, escUrl, receiverUrl, batteryUrl].filter(Boolean);
+    const stackComponents = [fcUrl, escUrl, receiverUrl].filter(Boolean);
     stackComponents.forEach((url, idx) => {
-      const typeMap = { [fcUrl]: 'flight_controller', [escUrl]: 'esc', [receiverUrl]: 'receiver', [batteryUrl]: 'battery' };
+      const typeMap = { [fcUrl]: 'flight_controller', [escUrl]: 'esc', [receiverUrl]: 'receiver' };
       const compType = typeMap[url];
       // Skip loading if component type is in clearedComponents
       if (!clearedComponents.includes(compType)) {
@@ -654,6 +655,20 @@ const BabylonViewer = ({
         }, compType);
       }
     });
+
+    // Battery is mounted on bottom plate of frame, not stacked in center
+    if (batteryUrl && !clearedComponents.includes('battery')) {
+      loadSingle(batteryUrl, (meshes) => {
+        meshes.forEach(m => {
+          if (!m.parent && !m.name.startsWith("__")) {
+            const shift = scene.__groundShift || 0;
+            // Position battery at bottom (negative offset from center stack)
+            const batteryOffsetY = -10; // mm below center (adjust as needed)
+            m.position.y = batteryOffsetY + shift;
+          }
+        });
+      }, 'battery');
+    }
 
     // Load motors at frame corner positions with mounting point alignment
     const motorPositions = computeMotorPositions(frameCornerPositions, motorMountingPoint);

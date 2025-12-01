@@ -20,16 +20,34 @@ const TwoDViewer = ({ modelUrl }) => {
         const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
         const scene = new Scene(engine);
 
-        // Top-down camera: Maintain consistency with the 3D alpha, fixing only the beta to a top-down perspective.
+        // Detect if this is a preset (sample_assembly) or custom build
+        const isPreset = modelUrl && typeof modelUrl === 'string' && modelUrl.toLowerCase().includes('sample_assembly');
+
         const radius = 360;
-        const camera = new ArcRotateCamera("cam2D", Math.PI / 2, 0.0001, radius, Vector3.Zero(), scene);
-        camera.lowerBetaLimit = 0.0001;
-        camera.upperBetaLimit = 0.0001;
-        camera.lowerAlphaLimit = Math.PI / 2;
-        camera.upperAlphaLimit = Math.PI / 2;
+        let camera;
+        
+        if (isPreset) {
+            // PRESET: Top-down camera view
+            // In ArcRotateCamera: alpha = horizontal rotation, beta = vertical angle (0 = top-down)
+            camera = new ArcRotateCamera("cam2D", 0, 0, radius, Vector3.Zero(), scene);
+            camera.lowerBetaLimit = 0;
+            camera.upperBetaLimit = 0;
+            camera.beta = 0; // Lock to top-down view
+            camera.lowerAlphaLimit = -Infinity;
+            camera.upperAlphaLimit = Infinity;
+        } else {
+            // CUSTOM BUILD: Original side/back view logic
+            camera = new ArcRotateCamera("cam2D", Math.PI / 2, 0.0001, radius, Vector3.Zero(), scene);
+            camera.lowerBetaLimit = 0.0001;
+            camera.upperBetaLimit = 0.0001;
+            camera.lowerAlphaLimit = Math.PI / 2;
+            camera.upperAlphaLimit = Math.PI / 2;
+        }
+        
         camera.lowerRadiusLimit = radius;
         camera.upperRadiusLimit = radius;
-        camera.panningSensibility = 0;    // Drag and drop is prohibited.
+        camera.attachControl(canvas, false);
+        camera.panningSensibility = 0;
 
         new HemisphericLight("hemi", new Vector3(0, 1, 0), scene);
 
@@ -77,6 +95,10 @@ const TwoDViewer = ({ modelUrl }) => {
 
         const loadModel = async () => {
             if (!modelUrl) return;
+            
+            // Detect if this is a preset (sample_assembly) or custom build
+            const isPreset = modelUrl && typeof modelUrl === 'string' && modelUrl.toLowerCase().includes('sample_assembly');
+            
             try {
                 const result = await SceneLoader.ImportMeshAsync(null, "", modelUrl, scene);
                 const pivot = new TransformNode("pivot", scene);
@@ -85,7 +107,18 @@ const TwoDViewer = ({ modelUrl }) => {
                         m.parent = pivot;
                     }
                 });
-                pivot.rotation.x = Math.PI / 2; // Convert Z-up to Y-up
+                
+                if (isPreset) {
+                    // PRESET: Top-down view with -90 degree rotation
+                    pivot.rotation.x = 0;
+                    pivot.rotation.y = -Math.PI / 2; // -90 degrees counterclockwise
+                    pivot.rotation.z = 0;
+                } else {
+                    // CUSTOM BUILD: Original rotation logic
+                    pivot.rotation.x = Math.PI / 2; // Convert Z-up to Y-up
+                    pivot.rotation.y = Math.PI; // Flip 180 degrees
+                }
+                
                 pivotNode = pivot;
                 attachInputHandlers();
             } catch (err) {
