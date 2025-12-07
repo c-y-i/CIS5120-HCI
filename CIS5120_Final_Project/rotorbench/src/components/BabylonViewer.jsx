@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, SceneLoader, TransformNode, Color3 } from "@babylonjs/core";
 import "@babylonjs/loaders"; // glTF/GLB loaders
 
+const FIXED_UNIT_SCALE = 0.001; // 1 mm -> 0.001 Babylon units (meters)
+
 /**
  * BabylonViewer component
  * Props:
@@ -48,7 +50,7 @@ const BabylonViewer = ({
   const previousModelUrlsRef = useRef([]);
   const frameLoadPromiseRef = useRef(Promise.resolve());
   const previousClearedComponentsRef = useRef([]);
-  const unitScaleRef = useRef(0.001);
+  const unitScaleRef = useRef(FIXED_UNIT_SCALE);
 
   const SAMPLE_CAMERA = { alpha: 7.85, beta: 1.2, radius: 460 };
 
@@ -62,6 +64,7 @@ const BabylonViewer = ({
     }
   };
 
+  /*
   const clearanceToSceneUnits = (clearanceMm) => {
     if (!clearanceMm) return 0;
     const scale = unitScaleRef.current;
@@ -69,6 +72,15 @@ const BabylonViewer = ({
       return clearanceMm * scale;
     }
     return clearanceMm * 0.001;
+  };
+  */
+  const clearanceToSceneUnits = (clearanceMm) => {
+    if (!clearanceMm) return 0;
+    const scale = unitScaleRef.current;
+    if (Number.isFinite(scale) && scale > 0) {
+      return clearanceMm * scale;
+    }
+    return clearanceMm * FIXED_UNIT_SCALE;
   };
 
   // Initialize engine + scene once
@@ -143,48 +155,6 @@ const BabylonViewer = ({
     });
   };
 
-  // Infer unit scale factor to convert mm positions to scene units based on frame size
-  const inferUnitScale = (scene, frameCorners) => {
-    try {
-      if (!scene || !frameCorners || frameCorners.length !== 4) return 1;
-      const frameMeshes = scene.meshes.filter(m => m.metadata?.componentType === 'frame' && !m.name.startsWith('__') && m.getBoundingInfo);
-      if (!frameMeshes.length) return 1;
-      // Compute scene-space bounding diagonal for frame
-      let minVec = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
-      let maxVec = new Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
-      frameMeshes.forEach(m => {
-        m.computeWorldMatrix(true);
-        const info = m.getBoundingInfo();
-        const bmin = info.boundingBox.minimumWorld;
-        const bmax = info.boundingBox.maximumWorld;
-        minVec.x = Math.min(minVec.x, bmin.x);
-        minVec.y = Math.min(minVec.y, bmin.y);
-        minVec.z = Math.min(minVec.z, bmin.z);
-        maxVec.x = Math.max(maxVec.x, bmax.x);
-        maxVec.y = Math.max(maxVec.y, bmax.y);
-        maxVec.z = Math.max(maxVec.z, bmax.z);
-      });
-      const sizeVec = maxVec.subtract(minVec);
-      const sceneDiag = Math.sqrt(sizeVec.x * sizeVec.x + sizeVec.y * sizeVec.y + sizeVec.z * sizeVec.z);
-      // Compute expected mm diagonal using opposite corners [0] and [2]
-      const a = frameCorners[0];
-      const c = frameCorners[2];
-      const dx = c[0] - a[0];
-      const dy = c[1] - a[1];
-      const dz = c[2] - a[2];
-      const mmDiag = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (mmDiag <= 0 || !isFinite(sceneDiag) || sceneDiag <= 0) return 1;
-      const scale = sceneDiag / mmDiag; // scene units per mm
-      // Log and clamp to reasonable range
-      if (scale < 1e-4 || scale > 1e4 || !isFinite(scale)) return 1;
-      console.log(`[BabylonViewer] Inferred unit scale (scene/mm): ${scale.toFixed(6)} (sceneDiag=${sceneDiag.toFixed(4)}, mmDiag=${mmDiag.toFixed(2)})`);
-      return scale;
-    } catch (e) {
-      console.warn('[BabylonViewer] Failed to infer unit scale:', e);
-      return 1;
-    }
-  };
-
   // Helper: fit camera to current scene meshes
   const isRenderableMesh = (mesh) => {
     if (!mesh || typeof mesh.getBoundingInfo !== 'function') return false;
@@ -257,6 +227,30 @@ const BabylonViewer = ({
     return current;
   };
 
+  /*
+  const shiftSceneBy = (offset) => {
+    const scene = sceneRef.current;
+    if (!scene || Math.abs(offset) < 1e-3) return;
+    const shifted = new Set();
+    const shiftNode = (node) => {
+      if (!node || shifted.has(node) || !node.position) return;
+      node.position.y += offset;
+      shifted.add(node);
+    };
+
+    scene.meshes.forEach(m => {
+      if (!isRenderableMesh(m)) return;
+      const root = getRootNode(m);
+      shiftNode(root || m);
+    });
+
+    (scene.transformNodes || []).forEach(n => {
+      if (!n.parent) shiftNode(n);
+    });
+
+    scene.__groundShift = (scene.__groundShift || 0) + offset;
+  };
+  */
   const shiftSceneBy = (offset) => {
     const scene = sceneRef.current;
     if (!scene || Math.abs(offset) < 1e-3) return;
@@ -281,6 +275,22 @@ const BabylonViewer = ({
   };
 
   // Normalize Y so lowest point sits at ground (y=0) with slight clearance
+  /*
+  const normalizeSceneY = (clearance = 0) => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const meshes = scene.meshes.filter(m => isRenderableMesh(m) && m.isVisible && m.getBoundingInfo);
+    if (!meshes.length) return;
+    let minY = Number.POSITIVE_INFINITY;
+    meshes.forEach(m => {
+      const info = m.getBoundingInfo();
+      minY = Math.min(minY, info.boundingBox.minimumWorld.y);
+    });
+    if (minY === Number.POSITIVE_INFINITY) return;
+    const offset = -minY + clearance;
+    shiftSceneBy(offset);
+  };
+  */
   const normalizeSceneY = (clearance = 0) => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -297,6 +307,7 @@ const BabylonViewer = ({
   };
 
   // Debounce normalization to run after all loads complete
+  /*
   const scheduleNormalization = (sessionToken) => {
     if (normalizeTimerRef.current) clearTimeout(normalizeTimerRef.current);
     normalizeTimerRef.current = setTimeout(() => {
@@ -315,6 +326,26 @@ const BabylonViewer = ({
         }
       }
     }, 120); // small delay to allow subsequent loads/clones
+  };
+  */
+  const scheduleNormalization = (sessionToken) => {
+    if (normalizeTimerRef.current) clearTimeout(normalizeTimerRef.current);
+    normalizeTimerRef.current = setTimeout(() => {
+      const scene = sceneRef.current;
+      if (!scene || scene.__currentLoadSession !== sessionToken) return;
+      const clearanceSceneUnits = clearanceToSceneUnits(groundClearance);
+      normalizeSceneY(clearanceSceneUnits);
+      fitCameraToScene();
+
+      if (sampleAssemblyActiveRef.current) {
+        const camera = cameraRef.current;
+        if (camera) {
+          camera.alpha = SAMPLE_CAMERA.alpha;
+          camera.beta = SAMPLE_CAMERA.beta;
+          camera.radius = SAMPLE_CAMERA.radius;
+        }
+      }
+    }, 120);
   };
 
   // Update background color when it changes
@@ -629,12 +660,8 @@ const BabylonViewer = ({
     // Load non-motor components first (centered) - skip if in clearedComponents
     const frameUrlToLoad = dynamicUrlsToLoad.find(url => url === currentUrls.frameUrl && url);
     const handleFrameLoaded = async () => {
-      const sceneInstance = sceneRef.current;
-      if (!sceneInstance || frameCornerPositions.length !== 4) return;
-      const inferredScale = inferUnitScale(sceneInstance, frameCornerPositions);
-      if (Number.isFinite(inferredScale) && inferredScale > 0) {
-        unitScaleRef.current = inferredScale;
-      }
+      if (frameCornerPositions.length !== 4) return;
+      unitScaleRef.current = FIXED_UNIT_SCALE;
     };
     if (frameUrlToLoad && !clearedComponents.includes('frame')) {
       frameLoadPromiseRef.current = loadSingle(frameUrlToLoad, handleFrameLoaded, 'frame');
@@ -703,10 +730,7 @@ const BabylonViewer = ({
         if (meshesToUse.length === 0) return;
 
         // Determine unit scale between mm (corner data) and scene units (GLB)
-        const unitScale = inferUnitScale(scene, frameCornerPositions);
-        if (Number.isFinite(unitScale) && unitScale > 0) {
-          unitScaleRef.current = unitScale;
-        }
+        const unitScale = unitScaleRef.current || FIXED_UNIT_SCALE;
         const scaledPositions = motorPositions.map(p => p.scale(unitScale));
 
         // Create a TransformNode per motor instance and parent all meshes to it
@@ -763,10 +787,7 @@ const BabylonViewer = ({
         if (meshesToUse.length === 0) return;
 
         // Infer unit scale and compute base positions
-        const unitScale = inferUnitScale(scene, frameCornerPositions);
-        if (Number.isFinite(unitScale) && unitScale > 0) {
-          unitScaleRef.current = unitScale;
-        }
+        const unitScale = unitScaleRef.current || FIXED_UNIT_SCALE;
         const motorRoots = (scene.transformNodes || []).filter(n => n.metadata?.componentType === 'motor')
           .sort((a, b) => a.name.localeCompare(b.name));
 
