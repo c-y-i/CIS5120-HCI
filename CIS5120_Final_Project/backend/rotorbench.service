@@ -1,0 +1,13 @@
+[Unit]
+Description=RotorBench Backend API
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/backend
+ExecStart=/usr/bin/python3 main.py
+Restart=always
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

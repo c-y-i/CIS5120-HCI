@@ -7,7 +7,7 @@ import BabylonViewer from "./BabylonViewer";
 import componentsData from "../data/components.json";
 import TwoDViewer from "./TwoDViewer";
 import API_BASE from "../config/api";
-import sampleAssembly from "../assets/sample_assembly.glb";
+const sampleAssembly = process.env.PUBLIC_URL + "/assets/sample_assembly.glb";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -80,7 +80,7 @@ export default function HomePage() {
     let cancelled = false;
     const load = async () => {
       const urls = [];
-      
+
       // Fetch frame model
       const frameUrl = await fetchModelForComponent("frames", currentBuild.componentIds?.frameId);
       if (frameUrl) urls.push(frameUrl);
@@ -231,8 +231,8 @@ export default function HomePage() {
               <button
                 key={comp.id}
                 onClick={() => {
-                  setClearedComponents(prev => 
-                    isHidden 
+                  setClearedComponents(prev =>
+                    isHidden
                       ? prev.filter(c => c !== comp.id)
                       : [...prev, comp.id]
                   );

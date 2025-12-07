@@ -1,71 +1,78 @@
 # Deployment Guide
 
-## 1. Frontend (GitHub Pages)
+## 1. One-Time GitHub Setup
 
-Hosting: GitHub Pages
-Connects to: EC2 Backend
+Before deploying for the first time, change these settings on your repository website:
 
-### How to deploy
+### A. Enable Bot Permissions
+1.  Go to your repository **Settings** tab.
+2.  On the left, click **Actions** -> **General**.
+3.  Scroll down to **Workflow permissions**.
+4.  Select **Read and write permissions**.
+5.  Click **Save**.
+    *   *This allows the automated script to publish the website for you.*
 
-1. Open a terminal in the `rotorbench` folder:
-   ```bash
-   cd rotorbench
-   ```
-
-2. Run the deploy command:
-   ```bash
-   npm run deploy
-   ```
-   *This builds the app and flings it to the `gh-pages` branch. Give it a minute to update.*
-
-### If Backend IP changes
-
-1. Open `rotorbench/.env.production`
-2. Update the IP:
-   ```env
-   REACT_APP_API_BASE=http://<NEW_IP>:8000
-   ```
-3. Run `npm run deploy` again.
+### B. Configure Pages Source (Do this AFTER your first push)
+1.  Go to **Settings** -> **Pages**.
+2.  Under **Build and deployment** -> **Source**, choose **Deploy from a branch**.
+3.  Under **Branch**, select `gh-pages` (and `/ root` folder).
+    *   *Note: If you don't see `gh-pages` yet, wait until the "Deploy to GitHub Pages" action finishes running for the first time, then come back here.*
+4.  Click **Save**.
 
 ---
 
-## 2. Backend (EC2)
+## 2. How to Deploy (Frontend)
 
-Hosting: AWS EC2 (Ubuntu/Linux)
+The website deploys automatically whenever you update the code.
 
-### First time setup
+1.  **Check Configuration:**
+    Ensure `rotorbench/.env.production` has the correct backend IP:
+    ```env
+    REACT_APP_API_BASE=http://<YOUR_EC2_IP>:8000
+    ```
 
+2.  **Push Changes:**
+    ```bash
+    git add .
+    git commit -m "Update site"
+    git push origin main
+    ```
+
+3.  **Wait & Verify:**
+    *   Go to the **Actions** tab on GitHub to see the build progress.
+    *   Once green, your site will be live at: `https://<username>.github.io/<repo-name>/`
+
+---
+
+## 3. Backend Setup (EC2)
+
+**Hosting:** AWS EC2 (Ubuntu)
+
+### A. Installation
 Connect to your EC2 and run:
-
 ```bash
-# Get the code (assuming you git clone or scp it over)
-cd backend
+cd /home/ubuntu/backend 
+# (Or wherever you placed the backend folder)
 
-# Install dependencies
 sudo apt update
 sudo apt install python3-pip
 pip install -r requirements.txt
 ```
 
-### Run the server
+### B. Start as a Service
+This makes the server run in the background and crash-proof.
 
-Use `nohup` so it stays running when you disconnect:
+1.  **Copy service file:**
+    ```bash
+    sudo cp rotorbench.service /etc/systemd/system/
+    ```
 
-```bash
-nohup python3 main.py > server.log 2>&1 &
-```
+2.  **Enable and Start:**
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now rotorbench
+    ```
 
-*Server listens on port 8000. Make sure your EC2 Security Group allows Inbound TCP on port 8000.*
-
-### Stop/Restart
-
-```bash
-# Find the process
-ps aux | grep main.py
-
-# Kill it
-kill <PID>
-
-# Start again
-nohup python3 main.py > server.log 2>&1 &
-```
+### C. Maintenance
+*   **Check status:** `sudo systemctl status rotorbench`
+*   **Restart server:** `sudo systemctl restart rotorbench`
