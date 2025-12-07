@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/CIS5120-HCI/static/css/main.9a7c28c2.css",
-    "main.js": "/CIS5120-HCI/static/js/main.6ffef3a9.js",
+    "main.js": "/CIS5120-HCI/static/js/main.27ada41a.js",
     "static/js/679.63a2d73a.chunk.js": "/CIS5120-HCI/static/js/679.63a2d73a.chunk.js",
     "static/js/151.511cebc0.chunk.js": "/CIS5120-HCI/static/js/151.511cebc0.chunk.js",
     "static/js/184.c48d3635.chunk.js": "/CIS5120-HCI/static/js/184.c48d3635.chunk.js",
@@ -11,6 +11,6 @@
   },
   "entrypoints": [
     "static/css/main.9a7c28c2.css",
-    "static/js/main.6ffef3a9.js"
+    "static/js/main.27ada41a.js"
   ]
 }
