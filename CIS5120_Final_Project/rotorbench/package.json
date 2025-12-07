@@ -2,7 +2,7 @@
   "name": "rotorbench",
   "version": "0.1.0",
   "private": true,
-  "homepage": ".",
+  "homepage": "https://c-y-i.github.io/CIS5120-HCI/",
   "dependencies": {
     "@babylonjs/core": "^8.34.1",
     "@babylonjs/gui": "^8.34.1",
