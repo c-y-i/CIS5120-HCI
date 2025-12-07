@@ -47,6 +47,7 @@ const BabylonViewer = ({
   const onLoadedRef = useRef(onLoaded);
   const previousModelUrlsRef = useRef([]);
   const frameLoadPromiseRef = useRef(Promise.resolve());
+  const previousClearedComponentsRef = useRef([]);
   const unitScaleRef = useRef(0.001);
 
   const SAMPLE_CAMERA = { alpha: 7.85, beta: 1.2, radius: 460 };
@@ -131,11 +132,11 @@ const BabylonViewer = ({
   // Convert frame corner positions to Vector3 and apply motor mounting point offset
   const computeMotorPositions = (cornerPositions, mountingPoint) => {
     if (!cornerPositions || cornerPositions.length !== 4) return [];
-    
+
     // mountingPoint is the offset from motor origin to its mounting hole
     // We need to subtract this offset so the mounting hole aligns with frame corner
     const offset = new Vector3(-mountingPoint[0], -mountingPoint[1], -mountingPoint[2]);
-    
+
     return cornerPositions.map(corner => {
       const framePos = new Vector3(corner[0], corner[1], corner[2]);
       return framePos.add(offset);
@@ -164,14 +165,14 @@ const BabylonViewer = ({
         maxVec.z = Math.max(maxVec.z, bmax.z);
       });
       const sizeVec = maxVec.subtract(minVec);
-      const sceneDiag = Math.sqrt(sizeVec.x*sizeVec.x + sizeVec.y*sizeVec.y + sizeVec.z*sizeVec.z);
+      const sceneDiag = Math.sqrt(sizeVec.x * sizeVec.x + sizeVec.y * sizeVec.y + sizeVec.z * sizeVec.z);
       // Compute expected mm diagonal using opposite corners [0] and [2]
       const a = frameCorners[0];
       const c = frameCorners[2];
       const dx = c[0] - a[0];
       const dy = c[1] - a[1];
       const dz = c[2] - a[2];
-      const mmDiag = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      const mmDiag = Math.sqrt(dx * dx + dy * dy + dz * dz);
       if (mmDiag <= 0 || !isFinite(sceneDiag) || sceneDiag <= 0) return 1;
       const scale = sceneDiag / mmDiag; // scene units per mm
       // Log and clamp to reasonable range
@@ -200,7 +201,7 @@ const BabylonViewer = ({
     const scene = sceneRef.current;
     const camera = cameraRef.current;
     if (!scene || !camera) return;
-    
+
     const meshes = scene.meshes.filter(m => isRenderableMesh(m) && m.isVisible && m.getBoundingInfo);
     if (!meshes.length) return;
 
@@ -210,7 +211,7 @@ const BabylonViewer = ({
 
     meshes.forEach(m => {
       // Update the mesh world matrix to ensure bounds are accurate
-      m.computeWorldMatrix(true); 
+      m.computeWorldMatrix(true);
       const info = m.getBoundingInfo();
       const bmin = info.boundingBox.minimumWorld;
       const bmax = info.boundingBox.maximumWorld;
@@ -233,21 +234,21 @@ const BabylonViewer = ({
     // 3. Calculate distance needed to fit object
     // If maxDim is 0.2 (20cm), radius becomes ~0.3
     let desiredRadius = maxDim * paddingFactor;
-    
+
     // Safety check for "ghost" meshes or empty scenes
-    if (desiredRadius < 0.01) desiredRadius = 5; 
+    if (desiredRadius < 0.01) desiredRadius = 5;
 
     camera.radius = desiredRadius;
 
     // 4. adjust limit dynamically
     // Allow zooming much closer than the object size
-    camera.lowerRadiusLimit = desiredRadius * 0.1; 
+    camera.lowerRadiusLimit = desiredRadius * 0.1;
     // Don't allow zooming out to infinity
-    camera.upperRadiusLimit = desiredRadius * 10; 
-    
+    camera.upperRadiusLimit = desiredRadius * 10;
+
     // 5. Fix clipping so it doesn't disappear
     camera.minZ = desiredRadius * 0.01;
-    camera.maxZ = desiredRadius * 1000; 
+    camera.maxZ = desiredRadius * 1000;
   };
   const getRootNode = (node) => {
     if (!node) return null;
@@ -398,9 +399,9 @@ const BabylonViewer = ({
       frameUrl: modelUrls[0] || null,
       sampleUrl: (!modelUrls.length && modelUrl) ? modelUrl : null
     };
-    
+
     const previousUrls = previousUrlsRef.current || {};
-    
+
     // Force dispose if resetKey changed explicitly
     const resetTriggered = resetKey !== (scene.__lastResetKey || 0);
     if (resetTriggered) {
@@ -432,7 +433,7 @@ const BabylonViewer = ({
             frameUrl: 'frame',
             sampleUrl: 'sample'
           };
-          const componentType = keyToType[key] || key.replace('Url','');
+          const componentType = keyToType[key] || key.replace('Url', '');
 
           // Dispose meshes tagged with this component type; fallback to name heuristic
           scene.meshes.forEach(m => {
@@ -453,7 +454,7 @@ const BabylonViewer = ({
         }
       });
     }
-    
+
     previousUrlsRef.current = currentUrls;
     setLoadedCount(0);
 
@@ -461,7 +462,23 @@ const BabylonViewer = ({
     const includeSampleUrl = !dynamicUrls.length && Boolean(modelUrl);
     const previousModelUrls = previousModelUrlsRef.current;
     const previousModelUrlSet = new Set(previousModelUrls);
-    const dynamicUrlsToLoad = resetTriggered ? dynamicUrls : dynamicUrls.filter(url => !previousModelUrlSet.has(url));
+    const previousCleared = previousClearedComponentsRef.current || [];
+
+    // Check if frame or sample was unhidden
+    const frameUnhidden = previousCleared.includes('frame') && !clearedComponents.includes('frame');
+    const sampleUnhidden = previousCleared.includes('sample') && !clearedComponents.includes('sample');
+
+    const dynamicUrlsToLoad = resetTriggered
+      ? dynamicUrls
+      : dynamicUrls.filter(url => {
+        // If URL is new, load it
+        if (!previousModelUrlSet.has(url)) return true;
+        // If it's the frame URL and frame was just unhidden, reload it
+        if (frameUnhidden && url === currentUrls.frameUrl) return true;
+        // If it's sample and sample was unhidden
+        if (sampleUnhidden && (url === currentUrls.sampleUrl || isSampleAssemblyUrl(url))) return true;
+        return false;
+      });
 
     const activeUrls = new Set([
       ...dynamicUrls,
@@ -515,7 +532,7 @@ const BabylonViewer = ({
 
     const markStatus = (url, status, info) => {
       if (scene.__currentLoadSession !== loadSession) return;
-      setLoadStatuses(prev => ({ ...prev, [url]: { status, info }}));
+      setLoadStatuses(prev => ({ ...prev, [url]: { status, info } }));
     };
 
     const preflight = async (url) => {
@@ -751,17 +768,17 @@ const BabylonViewer = ({
           unitScaleRef.current = unitScale;
         }
         const motorRoots = (scene.transformNodes || []).filter(n => n.metadata?.componentType === 'motor')
-                             .sort((a,b) => a.name.localeCompare(b.name));
+          .sort((a, b) => a.name.localeCompare(b.name));
 
         const propLiftMm = 6; // ~6mm above motor origin as a safe default
         const lift = unitScale * propLiftMm;
 
         let propPositions;
         if (motorRoots.length >= 4) {
-          propPositions = motorRoots.slice(0,4).map(r => new Vector3(r.position.x, r.position.y + lift, r.position.z));
+          propPositions = motorRoots.slice(0, 4).map(r => new Vector3(r.position.x, r.position.y + lift, r.position.z));
         } else {
           // Fallback to frame corners (scaled) if motors not present
-          propPositions = frameCornerPositions.map(c => new Vector3(c[0]*unitScale, c[1]*unitScale + lift, c[2]*unitScale));
+          propPositions = frameCornerPositions.map(c => new Vector3(c[0] * unitScale, c[1] * unitScale + lift, c[2] * unitScale));
         }
 
         const createPropInstance = (idx, position) => {
@@ -792,24 +809,25 @@ const BabylonViewer = ({
       loadSingle(modelUrl, null, 'sample');
     }
 
+    previousClearedComponentsRef.current = clearedComponents;
   }, [modelUrl, modelUrls, frameCornerPositions, motorUrl, motorMountingPoint, batteryUrl, fcUrl, escUrl, receiverUrl, propellerUrl, groundClearance, resetKey, clearedComponents]);
 
   return (
-    <div style={{ width: "100%", height: "400px", border: "1px solid #222", borderRadius: 8, overflow: "hidden", background: "#111", position:'relative' }}>
+    <div style={{ width: "100%", height: "400px", border: "1px solid #222", borderRadius: 8, overflow: "hidden", background: "#111", position: 'relative' }}>
       <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
       {debug && (
-        <div style={{ position:'absolute', top:8, left:8, background:'rgba(0,0,0,0.6)', padding:'6px 8px', fontSize:11, color:'#eee', maxWidth:260, overflowY:'auto', maxHeight:180 }}>
-          <div style={{ fontWeight:'600', marginBottom:4 }}>Model Load Status</div>
+        <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', padding: '6px 8px', fontSize: 11, color: '#eee', maxWidth: 260, overflowY: 'auto', maxHeight: 180 }}>
+          <div style={{ fontWeight: '600', marginBottom: 4 }}>Model Load Status</div>
           {Object.keys(loadStatuses).length === 0 && <div>Waiting...</div>}
           {Object.entries(loadStatuses).map(([url, info]) => (
-            <div key={url} style={{ marginBottom:4 }}>
-              <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{url}</div>
-              <div style={{ color: info.status==='success' ? '#4caf50' : info.status==='error' ? '#f44336' : '#ffb300' }}>
+            <div key={url} style={{ marginBottom: 4 }}>
+              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</div>
+              <div style={{ color: info.status === 'success' ? '#4caf50' : info.status === 'error' ? '#f44336' : '#ffb300' }}>
                 {info.status}: {info.info}
               </div>
             </div>
           ))}
-          <div style={{ marginTop:6, borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:4 }}>
+          <div style={{ marginTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 4 }}>
             <div>Camera α: {cameraStatus.alpha.toFixed(2)}</div>
             <div>Camera β: {cameraStatus.beta.toFixed(2)}</div>
             <div>Radius: {cameraStatus.radius.toFixed(2)}</div>
