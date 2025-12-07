@@ -23,12 +23,12 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd rotorbench
+          cd CIS5120_Final_Project/rotorbench
           npm ci
 
       - name: Build
         run: |
-          cd rotorbench
+          cd CIS5120_Final_Project/rotorbench
           npm run build
         env:
           CI: false
@@ -41,4 +41,4 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./rotorbench/build
+          publish_dir: ./CIS5120_Final_Project/rotorbench/build
