@@ -38,6 +38,7 @@ export interface ESC {
   currentRating: number; // continuous amps
   burstCurrent: number; // amps
   weight: number; // grams
+  mounting_point?: [number, number, number]; // offset from model origin
   voltage: {
     min: number; // e.g., 2S
     max: number; // e.g., 6S
@@ -52,6 +53,7 @@ export interface FlightController {
   manufacturer: string; // Keep manufacturer for FC
   processor: string;
   weight: number; // grams
+  mounting_point?: [number, number, number];
   firmware: string[]; // e.g., ["Betaflight", "INAV"]
   imu: string; // e.g., "MPU6000"
   maxVoltage: number;
@@ -79,6 +81,7 @@ export interface Battery {
   cells: number; // S count (e.g., 4 for 4S)
   cRating: number; // discharge rate
   weight: number; // grams
+  mounting_point?: [number, number, number]; // offset from model origin to mounting contact point
   dischargeProfile: {
     // Voltage vs capacity remaining
     percentage: number;
@@ -92,6 +95,7 @@ export interface Receiver {
   name: string;
   protocol: string; // e.g., "SBUS", "CRSF"
   weight: number; // grams
+  mounting_point?: [number, number, number];
   currentDraw: number; // mA
   channels: number;
   price: number;

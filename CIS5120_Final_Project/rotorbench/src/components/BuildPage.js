@@ -130,6 +130,11 @@ export default function BuildPage() {
   const [receiverModelUrl, setReceiverModelUrl] = useState(null);
   const [frameCornerPositions, setFrameCornerPositions] = useState([]);
   const [motorMountingPoint, setMotorMountingPoint] = useState([0, 0, 0]);
+  const [batteryMountingPoint, setBatteryMountingPoint] = useState([0, 0, 0]);
+  const [propellerMountingPoint, setPropellerMountingPoint] = useState([0, 0, 0]);
+  const [escMountingPoint, setEscMountingPoint] = useState([0, 0, 0]);
+  const [fcMountingPoint, setFcMountingPoint] = useState([0, 0, 0]);
+  const [receiverMountingPoint, setReceiverMountingPoint] = useState([0, 0, 0]);
   const [resetKey, setResetKey] = useState(0);
   const [clearedComponents, setClearedComponents] = useState([]);
   const [showDebugStatus, setShowDebugStatus] = useState(false);
@@ -194,6 +199,11 @@ export default function BuildPage() {
       setReceiverModelUrl(null);
       setFrameCornerPositions([]);
       setMotorMountingPoint([0, 0, 0]);
+      setBatteryMountingPoint([0, 0, 0]);
+      setEscMountingPoint([0, 0, 0]);
+      setFcMountingPoint([0, 0, 0]);
+      setReceiverMountingPoint([0, 0, 0]);
+      setPropellerMountingPoint([0, 0, 0]);
       setLoadingModels(false);
       setModelError(nonFrameSelected ? "Please select a frame first." : "");
       return;
@@ -271,6 +281,41 @@ export default function BuildPage() {
           }
         } else {
           setMotorMountingPoint([0, 0, 0]);
+        }
+
+        const propObj = componentsData.propellers.find(p => p.id === selectedPropeller);
+        if (propObj && Array.isArray(propObj.mounting_point)) {
+          setPropellerMountingPoint(propObj.mounting_point);
+        } else {
+          setPropellerMountingPoint([0, 0, 0]);
+        }
+
+        const batteryObj = componentsData.batteries.find(b => b.id === selectedBattery);
+        if (batteryObj && Array.isArray(batteryObj.mounting_point)) {
+          setBatteryMountingPoint(batteryObj.mounting_point);
+        } else {
+          setBatteryMountingPoint([0, 0, 0]);
+        }
+
+        const escObj = componentsData.escs.find(e => e.id === selectedESC);
+        if (escObj && Array.isArray(escObj.mounting_point)) {
+          setEscMountingPoint(escObj.mounting_point);
+        } else {
+          setEscMountingPoint([0, 0, 0]);
+        }
+
+        const fcObj = componentsData.flight_controllers.find(f => f.id === selectedFC);
+        if (fcObj && Array.isArray(fcObj.mounting_point)) {
+          setFcMountingPoint(fcObj.mounting_point);
+        } else {
+          setFcMountingPoint([0, 0, 0]);
+        }
+
+        const rxObj = componentsData.receivers.find(r => r.id === selectedReceiver);
+        if (rxObj && Array.isArray(rxObj.mounting_point)) {
+          setReceiverMountingPoint(rxObj.mounting_point);
+        } else {
+          setReceiverMountingPoint([0, 0, 0]);
         }
       if (!cancelled) {
         // Only update modelUrls if the content actually changed
@@ -456,10 +501,15 @@ export default function BuildPage() {
           motorMountingPoint={motorMountingPoint}
           frameCornerPositions={frameCornerPositions}
           propellerUrl={propellerModelUrl}
+          propellerMountingPoint={propellerMountingPoint}
           batteryUrl={batteryModelUrl}
+          batteryMountingPoint={batteryMountingPoint}
           escUrl={escModelUrl}
+          escMountingPoint={escMountingPoint}
           fcUrl={fcModelUrl}
+          fcMountingPoint={fcMountingPoint}
           receiverUrl={receiverModelUrl}
+          receiverMountingPoint={receiverMountingPoint}
           groundClearance={4}
           autoRotate
           onLoaded={() => {}}

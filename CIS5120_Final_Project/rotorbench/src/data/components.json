@@ -12,7 +12,7 @@
       },
       "size": "1104",
       "price": 16.99,
-      "mounting_point": [-39.11, -21.23, 1000]
+      "mounting_point" : [-3, 0, 5]
     },
     {
       "id": "motor-1504.5-4000kv",
@@ -54,7 +54,7 @@
       },
       "size": "2207",
       "price": 18.99,
-      "mounting_point" : [0, 25.15, 0]
+      "mounting_point" : [0, 20.15, 0]
     },
     {
       "id": "motor-2207-1850kv",
@@ -67,7 +67,8 @@
         "max": 25.2
       },
       "size": "2207",
-      "price": 19.99
+      "price": 19.99,
+      "mounting_point" : [0, 20.15, 0]
     },
     {
       "id": "motor-2306-1700kv",
@@ -94,6 +95,7 @@
       "weight": 0.8,
       "material": "Polycarbonate",
       "price": 0.99,
+      "mounting_point": [0, 54, 2],
       "thrustData": [
         { "kv": 3000, "thrust": 85 },
         { "kv": 3500, "thrust": 110 },
@@ -117,6 +119,7 @@
       "weight": 1.8,
       "material": "Polycarbonate",
       "price": 1.49,
+      "mounting_point": [92, -4, 2],
       "thrustData": [
         { "kv": 2000, "thrust": 180 },
         { "kv": 2500, "thrust": 245 },
@@ -137,6 +140,7 @@
       "weight": 2.5,
       "material": "Polycarbonate",
       "price": 1.99,
+      "mounting_point": [100, -3, 0],
       "thrustData": [
         { "kv": 1800, "thrust": 320 },
         { "kv": 2200, "thrust": 420 },
@@ -157,6 +161,7 @@
       "weight": 4.2,
       "material": "Polycarbonate",
       "price": 2.49,
+      "mounting_point": [0, 0, 0],
       "thrustData": [
         { "kv": 1500, "thrust": 1050 },
         { "kv": 1600, "thrust": 1150 },
@@ -183,6 +188,7 @@
       "currentRating": 55,
       "burstCurrent": 65,
       "weight": 8.5,
+      "mounting_point": [0, 0, 0],
       "voltage": {
         "min": 11.1,
         "max": 25.2
@@ -191,26 +197,13 @@
       "price": 49.99
     },
     {
-      "id": "esc-iflight-succex-45a",
-      "name": "SucceX-E 45A 4in1",
-      "manufacturer": "iFlight",
-      "currentRating": 45,
-      "burstCurrent": 55,
-      "weight": 7.2,
-      "voltage": {
-        "min": 11.1,
-        "max": 25.2
-      },
-      "protocol": ["DShot600", "DShot300"],
-      "price": 39.99
-    },
-    {
       "id": "esc-holybro-tekko32-50a",
       "name": "Tekko32 F4 50A 4in1",
       "manufacturer": "Holybro",
       "currentRating": 50,
       "burstCurrent": 60,
       "weight": 8.0,
+      "mounting_point": [0, -10, 0],
       "voltage": {
         "min": 11.1,
         "max": 25.2
@@ -226,6 +219,7 @@
       "manufacturer": "iFlight",
       "processor": "AT32F435RGT7",
       "weight": 6.9,
+      "mounting_point": [0, -13, 10],
       "firmware": ["Betaflight"],
       "imu": "ICM42688",
       "maxVoltage": 33.6,
@@ -238,6 +232,7 @@
       "manufacturer": "SpeedyBee",
       "processor": "STM32F405",
       "weight": 6.2,
+      "mounting_point": [0, 0, 0],
       "firmware": ["Betaflight", "INAV"],
       "imu": "ICM42688P",
       "maxVoltage": 25.2,
@@ -250,6 +245,7 @@
       "manufacturer": "Holybro",
       "processor": "STM32F722",
       "weight": 5.8,
+      "mounting_point": [0, -15, 0],
       "firmware": ["Betaflight", "Ardupilot"],
       "imu": "MPU6000",
       "maxVoltage": 25.2,
@@ -262,6 +258,7 @@
       "manufacturer": "Diatone",
       "processor": "STM32F722",
       "weight": 6.5,
+      "mounting_point": [0, -15, 0],
       "firmware": ["Betaflight"],
       "imu": "ICM42688P",
       "maxVoltage": 25.2,
@@ -325,6 +322,7 @@
       "cells": 4,
       "cRating": 95,
       "weight": 185,
+      "mounting_point": [8, -8, 30],
       "dischargeProfile": [
         { "percentage": 100, "voltage": 16.8 },
         { "percentage": 95, "voltage": 16.65 },
@@ -358,6 +356,7 @@
       "cells": 4,
       "cRating": 80,
       "weight": 245,
+      "mounting_point": [25, -25, 0],
       "dischargeProfile": [
         { "percentage": 100, "voltage": 16.8 },
         { "percentage": 95, "voltage": 16.65 },
@@ -391,6 +390,7 @@
       "cells": 4,
       "cRating": 90,
       "weight": 335,
+      "mounting_point": [0, 0, 0],
       "dischargeProfile": [
         { "percentage": 100, "voltage": 16.8 },
         { "percentage": 95, "voltage": 16.65 },
@@ -424,6 +424,7 @@
       "cells": 6,
       "cRating": 120,
       "weight": 232,
+      "mounting_point": [0, -25, 0],
       "dischargeProfile": [
         { "percentage": 100, "voltage": 25.2 },
         { "percentage": 95, "voltage": 24.9 },
@@ -457,6 +458,7 @@
       "cells": 4,
       "cRating": 100,
       "weight": 462,
+      "mounting_point": [0, -40, 20],
       "dischargeProfile": [
         { "percentage": 100, "voltage": 16.8 },
         { "percentage": 95, "voltage": 16.6 },
@@ -489,6 +491,7 @@
       "name": "ELRS 2.4G RX",
       "protocol": "CRSF",
       "weight": 1.2,
+      "mounting_point": [0, 0, 0],
       "currentDraw": 45,
       "channels": 8,
       "price": 15.99

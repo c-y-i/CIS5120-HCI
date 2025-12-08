@@ -15,6 +15,7 @@ const FIXED_UNIT_SCALE = 0.001; // 1 mm -> 0.001 Babylon units (meters)
  *  - motorUrl: string (source model for a single motor; cloned to 4 corners)
  *  - motorMountingPoint: [x,y,z] offset from motor model origin to mounting point
  *  - batteryUrl, fcUrl, escUrl, receiverUrl: optional individual component URLs (center stacked)
+ *  - propellerUrl + propellerMountingPoint: optional prop mesh + offset for proper alignment
  */
 const BabylonViewer = ({
   modelUrl,
@@ -25,10 +26,15 @@ const BabylonViewer = ({
   motorUrl,
   motorMountingPoint = [0, 0, 0], // [x,y,z] offset from motor origin to mounting point
   batteryUrl,
+  batteryMountingPoint = [0, 0, 0],
   fcUrl,
+  fcMountingPoint = [0, 0, 0],
   escUrl,
+  escMountingPoint = [0, 0, 0],
   receiverUrl,
+  receiverMountingPoint = [0, 0, 0],
   propellerUrl,
+  propellerMountingPoint = [0, 0, 0], // offset from prop origin to mounting plane
   groundClearance = 2, // millimeters to lift lowest point above ground
   resetKey = 0,
   debug = false,
@@ -153,6 +159,42 @@ const BabylonViewer = ({
       const framePos = new Vector3(corner[0], corner[1], corner[2]);
       return framePos.add(offset);
     });
+  };
+  const getMountOffsetVector = (mountingPoint, unitScale) => {
+    if (!Array.isArray(mountingPoint) || mountingPoint.length !== 3) return Vector3.Zero();
+    return new Vector3(
+      -mountingPoint[0] * unitScale,
+      -mountingPoint[1] * unitScale,
+      -mountingPoint[2] * unitScale
+    );
+  };
+  const setMeshesRootPosition = (meshes, positionVec) => {
+    const applied = new Set();
+    meshes.forEach(mesh => {
+      if (!mesh || mesh.name.startsWith("__")) return;
+      const root = getRootNode(mesh);
+      const target = root && !root.name.startsWith("__") ? root : mesh;
+      if (applied.has(target)) return;
+      if (!target.position) target.position = Vector3.Zero();
+      target.position.x = positionVec.x;
+      target.position.y = positionVec.y;
+      target.position.z = positionVec.z;
+      applied.add(target);
+    });
+  };
+  const getMeshesTopWorldY = (meshes) => {
+    let maxY = Number.NEGATIVE_INFINITY;
+    meshes.forEach(mesh => {
+      if (!mesh || typeof mesh.getBoundingInfo !== 'function') return;
+      mesh.computeWorldMatrix(true);
+      const info = mesh.getBoundingInfo();
+      if (!info) return;
+      const current = info.boundingBox.maximumWorld.y;
+      if (Number.isFinite(current)) {
+        maxY = Math.max(maxY, current);
+      }
+    });
+    return maxY === Number.NEGATIVE_INFINITY ? null : maxY;
   };
 
   // Helper: fit camera to current scene meshes
@@ -682,35 +724,76 @@ const BabylonViewer = ({
     // Dynamic vertical stacking: compress gaps when some components missing
     // Stack FC, ESC, and receiver in center (battery is mounted on bottom plate separately)
     const stackSpacing = 3; // mm spacing between stacked components
-    const stackComponents = [fcUrl, escUrl, receiverUrl].filter(Boolean);
-    stackComponents.forEach((url, idx) => {
-      const typeMap = { [fcUrl]: 'flight_controller', [escUrl]: 'esc', [receiverUrl]: 'receiver' };
-      const compType = typeMap[url];
-      // Skip loading if component type is in clearedComponents
-      if (!clearedComponents.includes(compType)) {
-        const offsetY = idx * stackSpacing;
-        loadSingle(url, (meshes) => {
-          meshes.forEach(m => {
-            if (!m.parent && !m.name.startsWith("__")) {
-              const shift = scene.__groundShift || 0;
-              m.position.y = offsetY + shift;
-            }
-          });
-        }, compType);
+    const stackEntries = [
+      { url: fcUrl, type: 'flight_controller', mountingPoint: fcMountingPoint },
+      { url: escUrl, type: 'esc', mountingPoint: escMountingPoint },
+      { url: receiverUrl, type: 'receiver', mountingPoint: receiverMountingPoint }
+    ];
+    const loadStackComponents = async () => {
+      const sceneInstance = sceneRef.current;
+      if (!sceneInstance || sceneInstance.isDisposed) return;
+      const unitScale = unitScaleRef.current || FIXED_UNIT_SCALE;
+      const spacingSceneUnits = stackSpacing * unitScale;
+
+      const activeEntries = stackEntries.filter(entry => entry.url && !clearedComponents.includes(entry.type));
+      if (!activeEntries.length) {
+        sceneInstance.__stackBaseType = null;
+        return;
       }
-    });
+
+      const currentBaseType = sceneInstance.__stackBaseType;
+      if (!currentBaseType || !activeEntries.some(entry => entry.type === currentBaseType)) {
+        sceneInstance.__stackBaseType = activeEntries[0].type;
+      }
+
+      const orderedEntries = [
+        ...activeEntries.filter(entry => entry.type === sceneInstance.__stackBaseType),
+        ...activeEntries.filter(entry => entry.type !== sceneInstance.__stackBaseType)
+      ];
+
+      // Remove old stack components so we can rebuild cleanly
+      orderedEntries.forEach(entry => disposeComponentType(entry.type));
+
+      let stackTopY = null;
+      let basePosition = null;
+
+      for (const entry of orderedEntries) {
+        await loadSingle(entry.url, (meshes) => {
+          const shift = sceneInstance.__groundShift || 0;
+          const mountVec = getMountOffsetVector(entry.mountingPoint, unitScale);
+          const isBase = entry.type === sceneInstance.__stackBaseType;
+          const placementY = isBase
+            ? shift + mountVec.y
+            : ((stackTopY ?? (basePosition ? basePosition.y : shift)) + spacingSceneUnits);
+          const placement = new Vector3(
+            isBase ? mountVec.x : (basePosition ? basePosition.x : 0),
+            placementY,
+            isBase ? mountVec.z : (basePosition ? basePosition.z : 0)
+          );
+          setMeshesRootPosition(meshes, placement);
+          const topY = getMeshesTopWorldY(meshes);
+          stackTopY = Number.isFinite(topY) ? topY : placementY;
+          if (isBase) {
+            basePosition = placement.clone();
+          }
+        }, entry.type);
+      }
+    };
+    loadStackComponents();
 
     // Battery is mounted on bottom plate of frame, not stacked in center
     if (batteryUrl && !clearedComponents.includes('battery')) {
       loadSingle(batteryUrl, (meshes) => {
-        meshes.forEach(m => {
-          if (!m.parent && !m.name.startsWith("__")) {
-            const shift = scene.__groundShift || 0;
-            // Position battery at bottom (negative offset from center stack)
-            const batteryOffsetY = -10; // mm below center (adjust as needed)
-            m.position.y = batteryOffsetY + shift;
-          }
-        });
+        const unitScale = unitScaleRef.current || FIXED_UNIT_SCALE;
+        const batteryDropScene = -10 * unitScale;
+        const batteryOffsetVec = getMountOffsetVector(batteryMountingPoint, unitScale);
+        const shift = scene.__groundShift || 0;
+        const placement = new Vector3(
+          batteryOffsetVec.x,
+          batteryDropScene + shift + batteryOffsetVec.y,
+          batteryOffsetVec.z
+        );
+        setMeshesRootPosition(meshes, placement);
       }, 'battery');
     }
 
@@ -794,13 +877,21 @@ const BabylonViewer = ({
         const propLiftMm = 6; // ~6mm above motor origin as a safe default
         const lift = unitScale * propLiftMm;
 
-        let propPositions;
+        const propOffsetMm = new Vector3(-propellerMountingPoint[0], -propellerMountingPoint[1], -propellerMountingPoint[2]);
+        const propOffsetScene = propOffsetMm.scale(unitScale);
+        let basePositions;
         if (motorRoots.length >= 4) {
-          propPositions = motorRoots.slice(0, 4).map(r => new Vector3(r.position.x, r.position.y + lift, r.position.z));
+          basePositions = motorRoots.slice(0, 4).map(r => new Vector3(r.position.x, r.position.y, r.position.z));
         } else {
           // Fallback to frame corners (scaled) if motors not present
-          propPositions = frameCornerPositions.map(c => new Vector3(c[0] * unitScale, c[1] * unitScale + lift, c[2] * unitScale));
+          basePositions = frameCornerPositions.map(c => new Vector3(c[0] * unitScale, c[1] * unitScale, c[2] * unitScale));
         }
+
+        const propPositions = basePositions.map(pos => {
+          const adjusted = pos.clone().add(propOffsetScene);
+          adjusted.y += lift;
+          return adjusted;
+        });
 
         const createPropInstance = (idx, position) => {
           const root = new TransformNode(`prop_${idx}_root`, scene);
@@ -831,7 +922,7 @@ const BabylonViewer = ({
     }
 
     previousClearedComponentsRef.current = clearedComponents;
-  }, [modelUrl, modelUrls, frameCornerPositions, motorUrl, motorMountingPoint, batteryUrl, fcUrl, escUrl, receiverUrl, propellerUrl, groundClearance, resetKey, clearedComponents]);
+  }, [modelUrl, modelUrls, frameCornerPositions, motorUrl, motorMountingPoint, batteryUrl, batteryMountingPoint, fcUrl, fcMountingPoint, escUrl, escMountingPoint, receiverUrl, receiverMountingPoint, propellerUrl, propellerMountingPoint, groundClearance, resetKey, clearedComponents]);
 
   return (
     <div style={{ width: "100%", height: "400px", border: "1px solid #222", borderRadius: 8, overflow: "hidden", background: "#111", position: 'relative' }}>

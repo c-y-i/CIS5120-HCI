@@ -24,6 +24,11 @@ export default function HomePage() {
   const [receiverModelUrl, setReceiverModelUrl] = useState(null);
   const [frameCornerPositions, setFrameCornerPositions] = useState([]);
   const [motorMountingPoint, setMotorMountingPoint] = useState([0, 0, 0]);
+  const [batteryMountingPoint, setBatteryMountingPoint] = useState([0, 0, 0]);
+  const [propellerMountingPoint, setPropellerMountingPoint] = useState([0, 0, 0]);
+  const [escMountingPoint, setEscMountingPoint] = useState([0, 0, 0]);
+  const [fcMountingPoint, setFcMountingPoint] = useState([0, 0, 0]);
+  const [receiverMountingPoint, setReceiverMountingPoint] = useState([0, 0, 0]);
   const [clearedComponents, setClearedComponents] = useState([]);
   const [backgroundColor, setBackgroundColor] = useState("#2d2d44");
 
@@ -74,6 +79,12 @@ export default function HomePage() {
       setFcModelUrl(null);
       setReceiverModelUrl(null);
       setFrameCornerPositions([]);
+      setMotorMountingPoint([0, 0, 0]);
+      setBatteryMountingPoint([0, 0, 0]);
+      setEscMountingPoint([0, 0, 0]);
+      setFcMountingPoint([0, 0, 0]);
+      setReceiverMountingPoint([0, 0, 0]);
+      setPropellerMountingPoint([0, 0, 0]);
       return;
     }
 
@@ -128,12 +139,42 @@ export default function HomePage() {
         } else {
           setMotorMountingPoint([0, 0, 0]);
         }
+
+        if (propeller && Array.isArray(propeller.mounting_point)) {
+          setPropellerMountingPoint(propeller.mounting_point);
+        } else {
+          setPropellerMountingPoint([0, 0, 0]);
+        }
+
+        if (battery && Array.isArray(battery.mounting_point)) {
+          setBatteryMountingPoint(battery.mounting_point);
+        } else {
+          setBatteryMountingPoint([0, 0, 0]);
+        }
+
+        if (esc && Array.isArray(esc.mounting_point)) {
+          setEscMountingPoint(esc.mounting_point);
+        } else {
+          setEscMountingPoint([0, 0, 0]);
+        }
+
+        if (fc && Array.isArray(fc.mounting_point)) {
+          setFcMountingPoint(fc.mounting_point);
+        } else {
+          setFcMountingPoint([0, 0, 0]);
+        }
+
+        if (receiver && Array.isArray(receiver.mounting_point)) {
+          setReceiverMountingPoint(receiver.mounting_point);
+        } else {
+          setReceiverMountingPoint([0, 0, 0]);
+        }
       }
     };
 
     load();
     return () => { cancelled = true; };
-  }, [currentBuild, hasBuild, frame, motor]);
+  }, [currentBuild, hasBuild, frame, motor, propeller]);
 
   return (
     <div className={`app-container${menuOpen ? " menu-open" : ""}`}>
@@ -270,10 +311,15 @@ export default function HomePage() {
             motorMountingPoint={motorMountingPoint}
             frameCornerPositions={frameCornerPositions}
             propellerUrl={propellerModelUrl}
+            propellerMountingPoint={propellerMountingPoint}
             batteryUrl={batteryModelUrl}
+            batteryMountingPoint={batteryMountingPoint}
             escUrl={escModelUrl}
+            escMountingPoint={escMountingPoint}
             fcUrl={fcModelUrl}
+            fcMountingPoint={fcMountingPoint}
             receiverUrl={receiverModelUrl}
+            receiverMountingPoint={receiverMountingPoint}
             groundClearance={4}
             autoRotate
             clearedComponents={clearedComponents}
